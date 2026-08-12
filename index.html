@@ -1,0 +1,2336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘 플레이트 - 5학년 1반 싹싹 매니저</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Nanum+Gothic:wght@400;700;800&display=swap');
+        
+        body {
+            font-family: 'Nanum Gothic', sans-serif;
+            background-color: #FDFBF7;
+            color: #4A4036;
+        }
+
+        .handwritten {
+            font-family: 'Gaegu', cursive;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 380px;
+        }
+
+        .reward-card.locked {
+            opacity: 0.5;
+            filter: grayscale(1);
+            cursor: not-allowed;
+        }
+        
+        .reward-card.unlocked {
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.18);
+        }
+        .reward-card.unlocked:hover {
+            transform: translateY(-3px) scale(1.02);
+            border-color: #16A34A !important;
+            background-color: #ECFDF5 !important;
+        }
+
+        .tray-compartment {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            user-select: none;
+        }
+        .tray-compartment:hover {
+            transform: translateY(-2px);
+        }
+        .tray-compartment.cleared {
+            background-color: #DCFCE7 !important;
+            border-color: #16A34A !important;
+            transform: scale(0.98);
+            box-shadow: inset 0 2px 6px rgba(22, 163, 74, 0.2);
+        }
+
+        @keyframes floatCute {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-6px) rotate(1.5deg); }
+        }
+        .cute-avatar-bounce {
+            animation: floatCute 3.2s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.1); }
+        }
+        .aura-glow {
+            animation: pulseGlow 2.2s ease-in-out infinite;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .toast-animate {
+            animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 pb-20">
+
+    <script>
+        window.studentsData = [
+            { name: "김도연", gender: "남", dob: "150926", type: "doyeon", title: "🪐 우주 탐험가 도연", color: "#60A5FA", bg: "#EFF6FF" },
+            { name: "김현태", gender: "남", dob: "150516", type: "hyuntae", title: "👨‍🍳 마스터 셰프 현태", color: "#84CC16", bg: "#F7FEE7" },
+            { name: "민선혜", gender: "여", dob: "150402", type: "seonhye", title: "🧥 야구점퍼 선혜", color: "#3B82F6", bg: "#EFF6FF" },
+            { name: "박성준", gender: "남", dob: "151212", type: "sungjoon", title: "👓 훈남 안경 성준", color: "#64748B", bg: "#F8FAFC" },
+            { name: "변상윤", gender: "남", dob: "150610", type: "sangyoon", title: "🧢 폴로 비니 상윤", color: "#1E3A8A", bg: "#EEF2FF" },
+            { name: "송예슬", gender: "여", dob: "150430", type: "yeseul", title: "🗽 뉴욕 스타일 예슬", color: "#18181B", bg: "#F4F4F5" },
+            { name: "신선율", gender: "남", dob: "151009", type: "seonyul", title: "⚡ 삼선 스포티 선율", color: "#10B981", bg: "#ECFDF5" },
+            { name: "안선유", gender: "남", dob: "150705", type: "seonyu", title: "🎓 스마트 콜롬비아 선유", color: "#DC2626", bg: "#FEF2F2" },
+            { name: "양진우", gender: "남", dob: "150115", type: "jinwoo", title: "🧸 포근 휠라 플리스 진우", color: "#D97706", bg: "#FFFBEB" },
+            { name: "이도윤", gender: "남", dob: "150508", type: "doyoon", title: "⚽ 나이키 에이스 도윤", color: "#4B5563", bg: "#F3F4F6" },
+            { name: "이여원", gender: "여", dob: "150217", type: "yeowon", title: "🌸 니트 요정 여원", color: "#EC4899", bg: "#FDF2F8" },
+            { name: "이은", gender: "여", dob: "151215", type: "eun", title: "✨ 샤이닝 스타 은", color: "#EAB308", bg: "#FEFCE8" },
+            { name: "이지호", gender: "남", dob: "151224", type: "jiho", title: "👓 스마트 지호", color: "#059669", bg: "#ECFDF5" },
+            { name: "조유민", gender: "남", dob: "150506", type: "yoomin", title: "⛵ 항해 유민", color: "#EA580C", bg: "#FFF7ED" },
+            { name: "최미소", gender: "여", dob: "150124", type: "miso", title: "🐱 미소 천사 미소", color: "#A855F7", bg: "#FAF5FF" },
+            { name: "최서아", gender: "여", dob: "150422", type: "seoa", title: "👑 엔젤 아티스트 서아", color: "#14B8A6", bg: "#CCFBF1" },
+            { name: "최태경", gender: "남", dob: "150214", type: "taekyeong", title: "🔥 파이팅 태경", color: "#EF4444", bg: "#FEF2F2" }
+        ];
+
+        window.students = window.studentsData.map(s => s.name);
+
+        window.rewards = [
+            { pts: 100, name: "마이쮸", icon: "🍬" },
+            { pts: 200, name: "초코파이/음료", icon: "🍫" },
+            { pts: 300, name: "급식 1등", icon: "🥇" },
+            { pts: 400, name: "받아쓰기 면제", icon: "📝" },
+            { pts: 500, name: "오답노트 면제", icon: "📖" }
+        ];
+
+        window.defaultPreloadedJulyPlan = {
+            "2026-07-01": ["무장아찌", "배추겉절이", "쫀득한만두", "치킨마요덮밥", "김치콩나물국"],
+            "2026-07-02": ["계란말이", "미역줄기볶음", "요구르트", "렌틸콩밥", "쇠고기뭇국"],
+            "2026-07-03": ["마라메추리알조림", "깍두기", "생블루베리", "기장밥", "햄모듬찌개"]
+        };
+
+        window.defaultClassMissions = [
+            { id: 1, title: "🍱 1. 반 전체 싹싹(5칸) 50회 달성", target: 50, reward: "학급 자유시간 15분 부여", unit: "회", icon: "🍱" },
+            { id: 2, title: "🔥 2. 반 전체 잔반 제로 3일 연속", target: 3, reward: "쉬는 시간 2배 (20분) 보너스", unit: "일", icon: "🔥" },
+            { id: 3, title: "🥦 3. 채소/샐러드 싹싹 30회", target: 30, reward: "강당 체육활동 1시간 제공", unit: "회", icon: "🥦" },
+            { id: 4, title: "🌱 4. 누적 탄소 감축 20kg", target: 20, reward: "학급 영화 감상 & 과자 파티", unit: "kg", icon: "🌱" }
+        ];
+
+        if (!window.state) {
+            window.state = {
+                currentStudentIdx: 0,
+                points: Array(17).fill(0),
+                streaks: Array(17).fill(0),
+                lastSubmittedDate: Array(17).fill(null),
+                logs: Array(17).fill().map(() => []),
+                unlockedLogs: Array(17).fill(false),
+                trayCleared: [false, false, false, false, false],
+                isTeacherAuthenticated: false,
+                monthlyMenuMap: window.defaultPreloadedJulyPlan,
+                todayMenu: ["무장아찌", "배추겉절이", "쫀득한만두", "치킨마요덮밥", "김치콩나물국"],
+                userApiKey: localStorage.getItem('gemini_api_key') || '',
+                googleWebhookUrl: localStorage.getItem('google_sheet_webhook_url') || 'https://script.google.com/macros/s/AKfycbwqPqF91I3r4o9Wq4x0y5w9Zk1K2/exec',
+                missionsClaimedDate: Array(17).fill(null),
+                missionsClaimedCount: Array(17).fill(0),
+                classMissions: window.defaultClassMissions,
+                quests: [
+                    { id: 1, diff: "⭐ 1pt", title: "오늘 급식 식판 2칸 이상 깨끗이 비우기", reward: 1, completed: Array(17).fill(false) },
+                    { id: 2, diff: "⭐⭐ 2pt", title: "AI 싹싹이에게 맛있는 메뉴 자랑하기", reward: 2, completed: Array(17).fill(false) },
+                    { id: 3, diff: "⭐⭐⭐ 3pt", title: "채소/나물 포함 식판 5칸 완벽하게 비우기", reward: 3, completed: Array(17).fill(false) }
+                ]
+            };
+        }
+    </script>
+
+    <!-- Notification Container -->
+    <div id="toastContainer" class="fixed top-5 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4"></div>
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        <!-- Header -->
+        <header class="text-center">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1 bg-green-100 text-green-800 rounded-full text-xs font-extrabold mb-2 border border-green-200 shadow-sm">
+                🌱 5학년 1반 싹싹 먹기 프로젝트!
+                <span id="firebaseStatusBadge" class="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold">☁️ 연동 준비 중...</span>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-green-800 handwritten tracking-wide">🍱 오늘 급식 싹싹 매니저</h1>
+            <p class="text-sm sm:text-base text-stone-600 mt-1">오늘 맛있게 다 먹고 비운 식판 칸을 직접 터치해 보세요!</p>
+            
+            <div class="inline-block mt-3 px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-extrabold border border-red-200 shadow-sm">
+                ⚠️ 안 먹었는데 다 먹었다고 속이면 점수가 0점이 돼요!
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap justify-center gap-1.5 sm:gap-2 mt-5 bg-stone-100 p-1.5 rounded-2xl max-w-xl mx-auto border border-stone-200 shadow-inner">
+                <button id="tabRecordBtn" onclick="switchTab('record')" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all bg-white text-green-700 shadow-sm">
+                    🍱 급식 기록
+                </button>
+                <button id="tabMissionBtn" onclick="switchTab('mission')" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-stone-600 hover:text-stone-900">
+                    🎯 도전 미션
+                </button>
+                <button id="tabAiBtn" onclick="switchTab('ai')" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-stone-600 hover:text-stone-900">
+                    🤖 AI 싹싹이
+                </button>
+                <button id="tabTeacherBtn" onclick="openTeacherAuthModal()" class="flex-1 min-w-[90px] py-2 px-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all text-amber-800 bg-amber-100 hover:bg-amber-200">
+                    🔒 선생님 모드
+                </button>
+            </div>
+        </header>
+
+        <!-- Tab 1: Record & Profile -->
+        <div id="tabRecordContent" class="space-y-6">
+            <section class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200 text-center relative overflow-hidden">
+                <div id="streakBadge" class="absolute top-3 right-3 px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm border border-amber-200">
+                    🔥 <span id="streakCount">0</span>일 연속 다 먹음!
+                </div>
+                
+                <div class="flex items-center justify-center gap-1.5 mb-1 mt-2">
+                    <h2 class="text-lg font-bold text-stone-700" id="studentAvatarTitle">김도연</h2>
+                    <span id="studentGenderBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800">남</span>
+                </div>
+                
+                <p id="studentArchetypeBadge" class="text-xs text-amber-700 font-extrabold bg-amber-50 inline-block px-2.5 py-0.5 rounded-full border border-amber-200 mb-2">
+                    🪐 우주 탐험가 도연
+                </p>
+
+                <!-- Avatar SVG Container -->
+                <div class="flex justify-center my-2 relative">
+                    <div id="avatarAura" class="hidden absolute inset-0 w-40 h-40 mx-auto rounded-full bg-amber-200/60 aura-glow -z-0"></div>
+                    <div class="w-40 h-40 relative z-10 cute-avatar-bounce flex items-center justify-center" id="avatarSvgContainer"></div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mt-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-100 max-w-md mx-auto">
+                    <div class="flex justify-between items-center text-xs font-bold mb-1">
+                        <span class="text-stone-600">다음 선물: <span id="nextRewardName" class="text-green-700">마이쮸</span></span>
+                        <span id="progressText" class="text-green-700">0%</span>
+                    </div>
+                    <div class="w-full bg-stone-200 rounded-full h-2.5 overflow-hidden">
+                        <div id="progressBar" style="width: 0%" class="bg-green-500 h-full rounded-full transition-all duration-500"></div>
+                    </div>
+                </div>
+
+                <!-- Student Selector -->
+                <div class="space-y-1 mt-4 max-w-sm mx-auto">
+                    <label class="text-xs font-bold text-stone-400 uppercase tracking-wider">내 이름 찾기 (5학년 1반 17명)</label>
+                    <select id="studentSelector" class="w-full p-2.5 border rounded-xl font-extrabold text-center bg-stone-50 focus:ring-2 focus:ring-green-500 focus:outline-none text-stone-800 shadow-sm cursor-pointer">
+                    </select>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-stone-100 flex justify-around items-center max-w-md mx-auto">
+                    <div>
+                        <p class="text-2xl font-black text-green-700" id="myPointsDisplay">0 pt</p>
+                        <p class="text-[11px] text-stone-400 mt-0.5 font-medium">내가 모은 점수</p>
+                    </div>
+                    <div class="border-l border-stone-200 h-8"></div>
+                    <div>
+                        <span id="dailyStatusBadge" class="px-2.5 py-1 bg-amber-100 text-amber-800 font-bold rounded-full text-xs">
+                            오늘 아직 안함
+                        </span>
+                        <p class="text-[11px] text-stone-400 mt-1 font-medium">하루에 딱 1번만!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Meal Tray Section -->
+            <section class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-stone-200">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-stone-800 flex flex-wrap items-center gap-2">
+                            <span>🍱 오늘의 급식판</span>
+                            <span id="todayDateBadge" class="text-xs font-black text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 shadow-sm flex items-center gap-1">
+                                📅 날짜 로딩 중...
+                            </span>
+                        </h2>
+                        <p class="text-xs text-stone-500 mt-1">다 먹고 깨끗이 비운 칸을 클릭하면 초록색으로 바뀌어요!</p>
+                    </div>
+                    <span id="trayStatusBadge" class="px-3 py-1 bg-stone-100 text-stone-600 rounded-full text-xs font-bold border">
+                        0칸 비움 (0점)
+                    </span>
+                </div>
+
+                <!-- 5 Compartments Tray Graphics -->
+                <div class="bg-stone-100 p-4 rounded-3xl border-4 border-stone-200 shadow-inner max-w-md mx-auto my-4 space-y-3">
+                    <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div onclick="toggleCompartment(0)" id="comp-0" class="tray-compartment bg-white border-2 border-stone-300 rounded-2xl p-2.5 text-center h-24 flex flex-col items-center justify-between shadow-sm">
+                            <span class="text-lg">🥗</span>
+                            <div>
+                                <span class="text-[10px] text-stone-400 block">반찬 1</span>
+                                <span id="menuName-0" class="text-xs font-bold text-stone-700 line-clamp-1">치킨마요덮밥</span>
+                            </div>
+                            <span class="status-icon text-xs text-stone-300">⬜</span>
+                        </div>
+                        <div onclick="toggleCompartment(1)" id="comp-1" class="tray-compartment bg-white border-2 border-stone-300 rounded-2xl p-2.5 text-center h-24 flex flex-col items-center justify-between shadow-sm">
+                            <span class="text-lg">🥩</span>
+                            <div>
+                                <span class="text-[10px] text-stone-400 block">반찬 2</span>
+                                <span id="menuName-1" class="text-xs font-bold text-stone-700 line-clamp-1">제육볶음</span>
+                            </div>
+                            <span class="status-icon text-xs text-stone-300">⬜</span>
+                        </div>
+                        <div onclick="toggleCompartment(2)" id="comp-2" class="tray-compartment bg-white border-2 border-stone-300 rounded-2xl p-2.5 text-center h-24 flex flex-col items-center justify-between shadow-sm">
+                            <span class="text-lg">🥦</span>
+                            <div>
+                                <span class="text-[10px] text-stone-400 block">반찬 3</span>
+                                <span id="menuName-2" class="text-xs font-bold text-stone-700 line-clamp-1">시금치나물</span>
+                            </div>
+                            <span class="status-icon text-xs text-stone-300">⬜</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                        <div onclick="toggleCompartment(3)" id="comp-3" class="tray-compartment bg-white border-2 border-stone-300 rounded-2xl p-3 text-center h-28 flex flex-col items-center justify-between shadow-sm">
+                            <span class="text-2xl">🍚</span>
+                            <div>
+                                <span class="text-[10px] text-stone-400 block">밥</span>
+                                <span id="menuName-3" class="text-xs font-bold text-stone-800 line-clamp-1">현미밥</span>
+                            </div>
+                            <span class="status-icon text-xs text-stone-300">⬜</span>
+                        </div>
+                        <div onclick="toggleCompartment(4)" id="comp-4" class="tray-compartment bg-white border-2 border-stone-300 rounded-2xl p-3 text-center h-28 flex flex-col items-center justify-between shadow-sm">
+                            <span class="text-2xl">🍲</span>
+                            <div>
+                                <span class="text-[10px] text-stone-400 block">국</span>
+                                <span id="menuName-4" class="text-xs font-bold text-stone-800 line-clamp-1">소고기미역국</span>
+                            </div>
+                            <span class="status-icon text-xs text-stone-300">⬜</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-between bg-emerald-50 p-4 rounded-2xl border border-emerald-100 gap-3">
+                    <div class="text-xs text-emerald-900 leading-relaxed text-center sm:text-left">
+                        <span class="font-bold">점수 얻는 법:</span><br>
+                        • 2~4칸 다 먹기 ➡️ <strong class="text-green-700">+10점 (O)</strong><br>
+                        • 5칸 전부 싹싹 비움 ➡️ <strong class="text-emerald-700">+30점 (☆)</strong>
+                    </div>
+                    <button onclick="submitTrayRecord()" class="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-extrabold rounded-xl shadow-md transition-all transform active:scale-95 flex items-center justify-center gap-2">
+                        <span>📝</span>
+                        <span id="submitBtnText">오늘의 기록 저장하기 (+0점)</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Individual History Log -->
+            <section class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-xs text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>📜 내가 모은 점수 기록</span>
+                        <span id="logPrivacyBadge" class="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full font-bold border border-amber-200">🔒 나만 보기 보관함</span>
+                    </h3>
+                    <button onclick="unlockPersonalHistory()" id="btnUnlockHistory" class="text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-xl border border-emerald-200 transition-all flex items-center gap-1">
+                        🔑 본인 확인 후 열람하기
+                    </button>
+                </div>
+                <div id="historyLogList" class="space-y-1.5 max-h-48 overflow-y-auto text-xs">
+                    <div class="text-stone-400 text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                        <p class="font-bold text-stone-500 mb-1">🔒 본인만 볼 수 있는 비밀 기록입니다.</p>
+                        <p class="text-[11px]">위의 [오늘의 기록 저장하기]를 완료하거나 [본인 확인]을 거치면 내 기록이 나타납니다.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Rewards Shop Grid -->
+            <section class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-stone-800">🎁 점수 선물 가게</h2>
+                        <p class="text-xs text-stone-500">원하는 선물을 누르면 점수가 줄어들고 구글 시트/파이어베이스에 사용 내역이 저장돼요.</p>
+                    </div>
+                    <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                        실시간 자동 차감
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5" id="rewardGrid">
+                </div>
+            </section>
+
+            <!-- Ranking Chart -->
+            <section class="bg-white p-5 rounded-3xl shadow-sm border border-stone-200">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-stone-800">🏆 우리 반 싹싹 왕 랭킹</h2>
+                        <p class="text-xs text-stone-500" id="aiRankingSummary">🤖 AI 싹싹이가 점수에 맞춰 눈금을 똑똑하게 맞춰줘요!</p>
+                    </div>
+                    <span class="text-xs text-stone-400 font-bold bg-stone-100 px-2.5 py-1 rounded-full">실시간 순위</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="rankingChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab 2: Missions -->
+        <div id="tabMissionContent" class="hidden space-y-6">
+            <section class="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-6 rounded-3xl shadow-md space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                        <span class="px-2.5 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-emerald-100">🏫 우리 반 다 함께 미션</span>
+                        <h2 class="text-2xl font-black mt-1">지구를 지키는 5학년 1반 목표</h2>
+                    </div>
+                    <span id="classMissionStatusBadge" class="px-3 py-1 bg-amber-300 text-amber-950 font-black rounded-full text-xs shadow">실시간 연동 중</span>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-emerald-950" id="classMissionCardsContainer">
+                </div>
+            </section>
+
+            <section class="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-3xl border border-indigo-200 shadow-sm space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🤖</span>
+                        <div>
+                            <h2 class="text-xl font-bold text-indigo-900">AI 싹싹이의 개인 도전 미션</h2>
+                            <p class="text-xs text-indigo-600">오늘을 위한 딱 3가지 도전 과제! <strong>(하루 최대 2개 보상 수령)</strong></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-extrabold text-indigo-800 bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-200">
+                            오늘 받은 보상: <span id="dailyClaimCountBadge">0</span> / 2 개
+                        </span>
+                        <button onclick="refreshAiMissions()" id="btnRefreshMissions" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition-all flex items-center gap-1">
+                            ✨ 미션 새로고침
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-2.5" id="dailyMissionList">
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab 3: AI -->
+        <div id="tabAiContent" class="hidden space-y-6">
+            <section class="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-3xl border border-green-200 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-2xl bg-green-600 text-white flex items-center justify-center font-bold text-xl shadow">✨</div>
+                    <div>
+                        <h2 class="text-xl font-bold text-green-800">AI 싹싹이의 칭찬 편지</h2>
+                        <p class="text-xs text-green-600">오늘 먹은 메뉴를 적으면 Gemini AI가 칭찬과 함께 줄인 탄소 양을 알려줘요.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-green-100 shadow-sm space-y-3">
+                    <label class="block text-xs font-bold text-stone-500">오늘 가장 맛있게 먹은 메뉴 (아래 버튼을 터치해 보세요!)</label>
+                    <div class="flex flex-wrap gap-1.5 mb-2" id="aiQuickMenuChips">
+                    </div>
+                    <input type="text" id="aiMenuInput" placeholder="예: 제육볶음, 소고기미역국" class="w-full p-3 border rounded-xl text-sm bg-stone-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <button onclick="generateAiPraise()" id="btnAiPraise" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm shadow transition-all flex items-center justify-center gap-2">
+                        <span>🤖</span> AI 싹싹이 칭찬 들으러 가기
+                    </button>
+                </div>
+
+                <div id="aiResultContainer" class="hidden mt-4 bg-white p-5 rounded-2xl border border-green-200 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full">싹싹이의 한마디</span>
+                    </div>
+                    <p id="aiPraiseText" class="text-sm leading-relaxed text-stone-800 whitespace-pre-line bg-stone-50 p-4 rounded-xl border border-stone-100 font-medium"></p>
+                </div>
+            </section>
+
+            <section class="bg-gradient-to-br from-teal-50 to-cyan-50 p-6 rounded-3xl border border-teal-200 shadow-sm space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-xl shadow">📊</div>
+                        <div>
+                            <h2 class="text-xl font-bold text-teal-900">AI 싹싹이 주간/월간 종합 보고서</h2>
+                            <p class="text-xs text-teal-700">쌓인 급식 기록을 Gemini AI가 분석해 종합 리포트로 만들어줘요!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="generateAiPeriodReport('week')" id="btnReportWeek" class="py-3 px-4 bg-white hover:bg-teal-100 text-teal-800 font-bold rounded-2xl border border-teal-200 shadow-sm transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
+                        <span>📅</span> 최근 1주일 (7일) 보고서
+                    </button>
+                    <button onclick="generateAiPeriodReport('month')" id="btnReportMonth" class="py-3 px-4 bg-white hover:bg-teal-100 text-teal-800 font-bold rounded-2xl border border-teal-200 shadow-sm transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
+                        <span>🗓️</span> 최근 1개월 (30일) 보고서
+                    </button>
+                </div>
+
+                <div id="aiPeriodReportContainer" class="hidden bg-white p-5 rounded-2xl border border-teal-200 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-stone-100 pb-3">
+                        <span id="aiReportTitleBadge" class="text-xs font-black text-teal-800 bg-teal-100 px-3 py-1 rounded-full">
+                            📊 주간 급식 리포트
+                        </span>
+                        <span id="aiReportStudentBadge" class="text-xs font-bold text-stone-500">
+                            김도연 학생
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                        <div class="bg-teal-50 p-2.5 rounded-xl border border-teal-100">
+                            <p class="text-[10px] text-teal-700 font-bold">기록 횟수</p>
+                            <p class="text-base font-black text-teal-900" id="reportMetricTotal">0회</p>
+                        </div>
+                        <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
+                            <p class="text-[10px] text-emerald-700 font-bold">5칸 완판(☆)</p>
+                            <p class="text-base font-black text-emerald-900" id="reportMetric5Clears">0회</p>
+                        </div>
+                        <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-100">
+                            <p class="text-[10px] text-amber-700 font-bold">획득 점수</p>
+                            <p class="text-base font-black text-amber-900" id="reportMetricPts">0pt</p>
+                        </div>
+                        <div class="bg-sky-50 p-2.5 rounded-xl border border-sky-100">
+                            <p class="text-[10px] text-sky-700 font-bold">줄인 탄소량</p>
+                            <p class="text-base font-black text-sky-900" id="reportMetricCarbon">0 kg</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-100 text-xs sm:text-sm leading-relaxed text-stone-800 whitespace-pre-line font-medium" id="aiReportText">
+                        보고서를 생성하는 중입니다...
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab 4: Teacher -->
+        <div id="tabTeacherContent" class="hidden space-y-6">
+            <section class="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-5 sm:p-6 rounded-3xl border border-emerald-300 shadow-sm space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">📊</span>
+                        <div>
+                            <h3 class="text-lg font-bold text-emerald-950">선생님 구글 시트 연결</h3>
+                            <p class="text-xs text-emerald-800">학생들의 잔반 기록 및 포인트 보상 사용 내역이 구글 시트로 자동 전송됩니다.</p>
+                        </div>
+                    </div>
+                    <a href="https://docs.google.com/spreadsheets/d/1lVvH4LoJgtfp6JNp616KqDxNW_l4SvkEGEWqZzw0omE/edit?usp=sharing" target="_blank" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1">
+                        🔗 지정 구글 시트 열기 ↗
+                    </a>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-emerald-200 space-y-3 shadow-sm text-xs">
+                    <div>
+                        <label class="font-bold text-stone-700 block mb-1">Google Apps Script Webhook URL</label>
+                        <div class="flex gap-2">
+                            <input type="url" id="googleWebhookUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="flex-1 p-2.5 border rounded-xl bg-stone-50 text-stone-800 font-mono text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <button onclick="saveGoogleWebhookUrl()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition-all whitespace-nowrap">
+                                💾 URL 저장
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-emerald-50/70 p-3 rounded-xl border border-emerald-100 text-[11px] text-emerald-900 space-y-1">
+                        <p class="font-bold">💡 구글 시트 연동 안내:</p>
+                        <p>웹앱에서 발생한 모든 점수 기록 및 보상 차감 내역이 해당 구글 시트에 일시와 함께 자동 기록됩니다.</p>
+                        <button onclick="copyAppsScriptTemplate()" class="mt-1 px-3 py-1 bg-white hover:bg-emerald-100 text-emerald-800 font-bold rounded-lg border border-emerald-300 shadow-sm transition-all text-[11px]">
+                            📋 Apps Script 코드 복사하기
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Edit Class Missions Section -->
+            <section class="bg-gradient-to-br from-teal-500/10 to-emerald-500/10 p-5 sm:p-6 rounded-3xl border border-teal-300 shadow-sm space-y-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🏫</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-teal-950">선생님 단체 미션 내용 & 목표 수정</h3>
+                        <p class="text-xs text-teal-800">우리 반 공동 미션 4가지의 제목, 목표치, 보상 내용을 수정하여 반영합니다.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-teal-200 space-y-3 shadow-sm text-xs">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="teacherMissionEditGrid">
+                    </div>
+                    <div class="text-right pt-2">
+                        <button onclick="saveClassMissionsByTeacher()" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow transition-all">
+                            💾 단체 미션 설정 저장하기
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gemini API Key Settings Section -->
+            <section class="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 p-5 sm:p-6 rounded-3xl border border-purple-300 shadow-sm space-y-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🔑</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-purple-950">Gemini API 키 설정</h3>
+                        <p class="text-xs text-purple-800">월간 식단표 파싱, AI 싹싹이 칭찬 및 미션 생성용 Gemini API 키를 설정합니다.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-purple-200 space-y-3 shadow-sm text-xs">
+                    <div class="flex gap-2">
+                        <input type="password" id="geminiApiKeyInput" placeholder="Gemini API 키 입력 (미입력 시 기본 체험 키 활용)" class="flex-1 p-2.5 border rounded-xl bg-stone-50 text-stone-800 font-mono text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                        <button onclick="saveGeminiApiKey()" class="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow transition-all whitespace-nowrap">
+                            💾 키 저장
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Monthly Meal Plan Upload Section -->
+            <section class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-5 sm:p-6 rounded-3xl border border-amber-300 shadow-sm space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">📑</span>
+                        <div>
+                            <h3 class="text-lg font-bold text-amber-950">월간 가정통신문 식단표 업로드 & AI 날짜별 인식</h3>
+                            <p class="text-xs text-amber-800">월간 식단표(PDF, 이미지)를 업로드하면 Gemini AI가 날짜별 메뉴를 자동 추출합니다.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-amber-200 space-y-3 shadow-sm">
+                    <div class="flex flex-col sm:flex-row gap-2 items-center">
+                        <input type="file" id="monthlyPlanFileInput" accept="image/*,.pdf,.txt,.csv" class="block w-full text-xs text-stone-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer">
+                        <button onclick="processMonthlyPlanFile()" id="btnParsePlan" class="w-full sm:w-auto px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow transition-all whitespace-nowrap flex items-center justify-center gap-1.5">
+                            <span>🤖</span> AI 식단표 파싱 실행
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <h4 class="text-xs font-bold text-amber-900 mb-2">오늘 수동 식단 변경</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        <div>
+                            <label class="text-[11px] font-bold text-amber-900 block mb-1">🥗 반찬 1</label>
+                            <input type="text" id="teacherMenu-0" class="w-full p-2 text-xs border rounded-lg bg-white font-bold text-stone-800">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-amber-900 block mb-1">🥩 반찬 2</label>
+                            <input type="text" id="teacherMenu-1" class="w-full p-2 text-xs border rounded-lg bg-white font-bold text-stone-800">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-amber-900 block mb-1">🥦 반찬 3</label>
+                            <input type="text" id="teacherMenu-2" class="w-full p-2 text-xs border rounded-lg bg-white font-bold text-stone-800">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-amber-900 block mb-1">🍚 밥</label>
+                            <input type="text" id="teacherMenu-3" class="w-full p-2 text-xs border rounded-lg bg-white font-bold text-stone-800">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-amber-900 block mb-1">🍲 국</label>
+                            <input type="text" id="teacherMenu-4" class="w-full p-2 text-xs border rounded-lg bg-white font-bold text-stone-800">
+                        </div>
+                    </div>
+                    <div class="text-right mt-2">
+                        <button onclick="saveMealMenuByTeacher()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow transition-all">
+                            💾 수동 식단 적용하기
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Student Score Management Section -->
+            <section class="bg-white p-5 sm:p-6 rounded-3xl border border-amber-200 shadow-sm space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-amber-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-amber-600 text-white flex items-center justify-center font-bold text-xl shadow">👩‍🏫</div>
+                        <div>
+                            <h2 class="text-xl font-bold text-amber-900">선생님 모드 (학생 점수 관리)</h2>
+                            <p class="text-xs text-amber-700">점수 수정, 칭찬 스티커 및 거짓 기록 시 0점 처리를 관리합니다.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="promptResetAllPoints()" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-xs font-bold border border-red-200 transition-all flex items-center gap-1">
+                            ⚠️ 전체 0점 초기화
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="bg-amber-100/70 text-amber-950 border-b border-amber-200">
+                                <th class="p-3 rounded-l-xl">번호</th>
+                                <th class="p-3">이름</th>
+                                <th class="p-3">현재 점수</th>
+                                <th class="p-3 min-w-[200px]">임의 점수 수정</th>
+                                <th class="p-3">칭찬 스티커</th>
+                                <th class="p-3 rounded-r-xl text-center">점수 깎기</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacherStudentTableBody" class="divide-y divide-stone-100">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <footer class="text-center text-stone-400 text-xs py-6">
+            <p>© 2026 5학년 1반 싹싹 프로젝트 | 지구를 지키는 맛있는 습관</p>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-xl space-y-4">
+            <div id="modalIcon" class="text-5xl mb-1">🔑</div>
+            <h3 id="modalTitle" class="text-2xl font-bold text-stone-800">본인 확인 (생년월일)</h3>
+            
+            <div id="modalDateBadge" class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-800 font-extrabold text-xs rounded-full border border-emerald-200">
+                📅 오늘 날짜 기록 중
+            </div>
+
+            <p id="modalMessage" class="text-xs text-stone-600 leading-relaxed">정직한 기록을 위해 본인의 생년월일 6자리를 입력해 주세요.</p>
+            
+            <div class="space-y-1">
+                <input type="password" id="dobInput" maxlength="6" placeholder="생년월일 6자리 (예: 150101)" class="w-full p-3 border rounded-xl text-center font-bold text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-green-500 bg-stone-50" onkeypress="if(event.key==='Enter') document.getElementById('modalConfirmBtn').click()">
+                <p id="dobError" class="text-xs text-red-500 font-bold hidden">⚠️ 생년월일이 일치하지 않습니다.</p>
+            </div>
+
+            <div class="flex gap-2.5 pt-2">
+                <button onclick="closeModal()" class="flex-1 py-3 rounded-xl bg-stone-100 hover:bg-stone-200 font-bold text-sm text-stone-600">취소</button>
+                <button id="modalConfirmBtn" class="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm shadow">확인 및 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="celebrationModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-50 backdrop-blur-md">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl space-y-4 border-4 border-amber-300 transform transition-all scale-100">
+            <div class="text-6xl animate-bounce mb-1" id="celebrationIcon">🎁</div>
+            <span class="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-black border border-amber-200">🎉 축하합니다!</span>
+            <h3 class="text-2xl font-black text-stone-800" id="celebrationTitle">선물 교환 완료!</h3>
+            <p class="text-sm font-bold text-green-700 bg-green-50 p-3 rounded-2xl border border-green-200" id="celebrationItemName">
+                마이쮸 교환권
+            </p>
+            <p class="text-xs text-stone-500 leading-relaxed">
+                파이어베이스 데이터베이스와 구글 시트에 사용 내역이 안전하게 기록되었습니다.
+            </p>
+            <button onclick="closeCelebrationModal()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold rounded-2xl shadow-lg transition-all transform active:scale-95 text-sm">
+                확인했습니다! 🌟
+            </button>
+        </div>
+    </div>
+
+    <div id="teacherAuthModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-xl">
+            <div class="text-5xl">🔐</div>
+            <h3 class="text-xl font-bold text-stone-800">선생님 모드 비밀번호</h3>
+            <p class="text-xs text-stone-500">선생님 인증 비밀번호 4자리를 입력해 주세요.</p>
+            <div>
+                <input type="password" id="teacherPasswordInput" maxlength="4" placeholder="비밀번호 4자리" class="w-full p-3 border rounded-xl text-center font-bold text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-500 bg-stone-50" onkeypress="if(event.key==='Enter') verifyTeacherPassword()">
+                <p id="teacherAuthError" class="text-xs text-red-500 font-bold mt-2 hidden">⚠️ 비밀번호가 올바르지 않습니다.</p>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="closeTeacherAuthModal()" class="flex-1 py-2.5 rounded-xl bg-stone-100 font-bold text-xs text-stone-600">취소</button>
+                <button onclick="verifyTeacherPassword()" class="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="actionConfirmModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-xl">
+            <div class="text-4xl" id="actionModalIcon">❓</div>
+            <h3 class="text-lg font-bold text-stone-800" id="actionModalTitle">확인</h3>
+            <p class="text-xs text-stone-600 leading-relaxed whitespace-pre-line" id="actionModalMessage"></p>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeActionConfirmModal(false)" class="flex-1 py-2.5 rounded-xl bg-stone-100 font-bold text-xs text-stone-600">취소</button>
+                <button onclick="closeActionConfirmModal(true)" class="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs shadow" id="actionModalConfirmBtn">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-analytics.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCfRZPA8yvH6myXwuVHfLGXgQr9OHh1V4U",
+            authDomain: "grade-meal.firebaseapp.com",
+            projectId: "grade-meal",
+            storageBucket: "grade-meal.firebasestorage.app",
+            messagingSenderId: "887533661741",
+            appId: "1:887533661741:web:ddbbae9f348f3546a7d2a4",
+            measurementId: "G-MW0VMN8699"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.doc = doc;
+        window.setDoc = setDoc;
+
+        window.saveStateToFirestore = async function() {
+            try {
+                const docRef = doc(db, "class_data", "class_state");
+                
+                const payload = {
+                    points: window.state.points || [],
+                    streaks: window.state.streaks || [],
+                    lastSubmittedDate: (window.state.lastSubmittedDate || []).map(d => d || null),
+                    logsSerialized: JSON.stringify(window.state.logs || []),
+                    questsSerialized: JSON.stringify(window.state.quests || []),
+                    missionsClaimedDate: (window.state.missionsClaimedDate || []).map(d => d || null),
+                    missionsClaimedCount: window.state.missionsClaimedCount || [],
+                    todayMenu: window.state.todayMenu || [],
+                    classMissions: window.state.classMissions || [],
+                    updatedAt: new Date().toISOString()
+                };
+
+                await setDoc(docRef, payload, { merge: true });
+                const badge = document.getElementById('firebaseStatusBadge');
+                if (badge) {
+                    badge.textContent = "☁️ 파이어베이스 연동 완료";
+                    badge.className = "ml-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold";
+                }
+            } catch(e) {
+                console.error("Firestore Save Error:", e);
+                const badge = document.getElementById('firebaseStatusBadge');
+                if (badge) {
+                    badge.textContent = "💾 로컬 저장 작동 중";
+                    badge.className = "ml-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold";
+                }
+            }
+        };
+
+        async function initFirebaseSync() {
+            try {
+                await signInAnonymously(auth).catch(() => {});
+            } catch(e) {}
+
+            try {
+                const docRef = doc(db, "class_data", "class_state");
+                onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists() && window.state) {
+                        const data = docSnap.data();
+                        
+                        if (Array.isArray(data.points) && data.points.length === 17) {
+                            window.state.points = data.points;
+                        }
+                        if (Array.isArray(data.streaks) && data.streaks.length === 17) {
+                            window.state.streaks = data.streaks;
+                        }
+                        if (Array.isArray(data.lastSubmittedDate)) {
+                            window.state.lastSubmittedDate = data.lastSubmittedDate;
+                        }
+                        
+                        if (data.logsSerialized) {
+                            try { window.state.logs = JSON.parse(data.logsSerialized); } catch(err) {}
+                        }
+                        if (data.questsSerialized) {
+                            try { window.state.quests = JSON.parse(data.questsSerialized); } catch(err) {}
+                        }
+
+                        if (Array.isArray(data.todayMenu) && data.todayMenu.length === 5) {
+                            window.state.todayMenu = data.todayMenu;
+                            if (window.applyMealMenuToUI) window.applyMealMenuToUI();
+                        }
+
+                        if (Array.isArray(data.classMissions) && data.classMissions.length === 4) {
+                            window.state.classMissions = data.classMissions;
+                        }
+
+                        if (window.updateUI) window.updateUI();
+                        if (window.updateChart) window.updateChart();
+                        if (window.renderMissions) window.renderMissions();
+
+                        const badge = document.getElementById('firebaseStatusBadge');
+                        if (badge) {
+                            badge.textContent = "☁️ 실시간 연동 중";
+                            badge.className = "ml-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold";
+                        }
+                    }
+                });
+            } catch(e) {
+                console.log("Firestore Sync Listener Error:", e);
+            }
+        }
+
+        initFirebaseSync();
+    </script>
+
+    <script>
+        function renderStudentAvatarSVG(sIdx, currentPts) {
+            const st = window.studentsData ? window.studentsData[sIdx] : { type: "doyeon", color: "#60A5FA", bg: "#EFF6FF" };
+            const type = st ? st.type : "doyeon";
+
+            const levelWings = (currentPts >= 100) ? `
+                <g class="maple-wings">
+                    <path d="M 32 82 C 10 42, 12 105, 52 98 Z" fill="#7DD3FC" opacity="0.85" stroke="#0284C7" stroke-width="1.5"/>
+                    <path d="M 35 85 C 18 52, 20 98, 48 93 Z" fill="#FFF" opacity="0.9"/>
+                    <path d="M 168 82 C 190 42, 188 105, 148 98 Z" fill="#7DD3FC" opacity="0.85" stroke="#0284C7" stroke-width="1.5"/>
+                    <path d="M 165 85 C 182 52, 180 98, 152 93 Z" fill="#FFF" opacity="0.9"/>
+                </g>` : '';
+
+            const levelCrown = (currentPts >= 300) ? `
+                <g class="maple-crown">
+                    <path d="M 80 34 L 88 16 L 100 28 L 112 16 L 120 34 Z" fill="#FACC15" stroke="#CA8A04" stroke-width="2"/>
+                    <circle cx="88" cy="14" r="3" fill="#EF4444"/>
+                    <circle cx="100" cy="24" r="3.5" fill="#3B82F6"/>
+                    <circle cx="112" cy="14" r="3" fill="#10B981"/>
+                </g>` : '';
+
+            function makeMapleEyes(eyeColor = "#2563EB") {
+                return `
+                    <ellipse cx="80" cy="99" rx="7" ry="10" fill="#1E293B"/>
+                    <ellipse cx="80" cy="100" rx="5.5" ry="8" fill="${eyeColor}"/>
+                    <circle cx="77.5" cy="95" r="2.5" fill="#FFFFFF"/>
+                    <circle cx="82" cy="103" r="1.5" fill="#FFFFFF"/>
+                    <ellipse cx="120" cy="99" rx="7" ry="10" fill="#1E293B"/>
+                    <ellipse cx="120" cy="100" rx="5.5" ry="8" fill="${eyeColor}"/>
+                    <circle cx="117.5" cy="95" r="2.5" fill="#FFFFFF"/>
+                    <circle cx="122" cy="103" r="1.5" fill="#FFFFFF"/>
+                    <ellipse cx="69" cy="108" rx="6" ry="3.5" fill="#FF8A8A" opacity="0.5"/>
+                    <ellipse cx="131" cy="108" rx="6" ry="3.5" fill="#FF8A8A" opacity="0.5"/>
+                    <path d="M 93 112 Q 100 117 107 112" stroke="#334155" stroke-width="2" stroke-linecap="round" fill="none"/>
+                `;
+            }
+
+            let characterSvg = '';
+
+            switch(type) {
+                case "doyeon":
+                    characterSvg = `
+                        <path d="M 52 82 C 45 110, 62 138, 55 152 L 145 152 C 138 138, 155 110, 148 82 Z" fill="#1E293B"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFE5D9"/>
+                        <path d="M 56 78 C 56 50, 144 50, 144 78 Q 128 92 115 85 Q 100 93 85 85 Q 72 92 56 78 Z" fill="#1E293B"/>
+                        ${makeMapleEyes("#3B82F6")}
+                        <circle cx="80" cy="99" r="10.5" fill="none" stroke="#475569" stroke-width="2"/>
+                        <circle cx="120" cy="99" r="10.5" fill="none" stroke="#475569" stroke-width="2"/>
+                        <line x1="90.5" y1="99" x2="109.5" y2="99" stroke="#475569" stroke-width="2"/>
+                        <path d="M 56 68 Q 100 35, 144 68 Q 148 52 132 42 Q 100 30 68 42 Z" fill="#1E3A8A" stroke="#1E1B4B" stroke-width="1.5"/>
+                        <path d="M 52 68 C 84 56, 116 56, 148 68 L 152 73 C 116 61, 84 61, 48 73 Z" fill="#FACC15"/>
+                        <circle cx="138" cy="52" r="4" fill="#EF4444"/>
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#1E3A8A"/>
+                        <path d="M 78 136 L 100 162 L 122 136" fill="#F8FAFC"/>
+                    `;
+                    break;
+
+                case "hyuntae":
+                    characterSvg = `
+                        <path d="M 52 82 C 48 115, 152 115, 148 82 Z" fill="#78350F"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 56 75 C 56 52, 144 52, 144 75 Q 124 90 108 84 Q 96 90 84 84 Q 68 90 56 75 Z" fill="#78350F"/>
+                        ${makeMapleEyes("#16A34A")}
+                        <rect x="70" y="90" width="20" height="16" rx="4" fill="none" stroke="#334155" stroke-width="2"/>
+                        <rect x="110" y="90" width="20" height="16" rx="4" fill="none" stroke="#334155" stroke-width="2"/>
+                        <line x1="90" y1="98" x2="110" y2="98" stroke="#334155" stroke-width="2"/>
+                        <path d="M 68 62 C 60 32, 82 20, 100 22 C 118 20, 140 32, 132 62 Z" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+                        <rect x="66" y="58" width="68" height="10" rx="2" fill="#DC2626"/>
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#84CC16"/>
+                        <rect x="86" y="142" width="28" height="35" rx="3" fill="#FFFFFF"/>
+                    `;
+                    break;
+
+                case "seonhye":
+                    characterSvg = `
+                        <path d="M 45 72 Q 26 108 36 150 Q 52 138 58 98 Z" fill="#18181B"/>
+                        <path d="M 155 72 Q 174 108 164 150 Q 148 138 142 98 Z" fill="#18181B"/>
+                        <path d="M 52 78 C 48 42, 152 42, 148 78 Q 128 94 100 85 Q 72 94 52 78 Z" fill="#18181B"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFE5D9"/>
+                        <path d="M 56 75 C 66 58, 134 58, 144 75 Q 125 90 108 83 Q 95 89 82 83 Q 65 89 56 75 Z" fill="#27272A"/>
+                        ${makeMapleEyes("#2563EB")}
+                        <circle cx="56" cy="72" r="6" fill="#3B82F6"/>
+                        <path d="M 52 68 L 60 76 M 60 68 L 52 76" stroke="#FFFFFF" stroke-width="1.5"/>
+                        <circle cx="144" cy="72" r="6" fill="#3B82F6"/>
+                        <path d="M 140 68 L 148 76 M 148 68 L 140 76" stroke="#FFFFFF" stroke-width="1.5"/>
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#1D4ED8"/>
+                        <path d="M 52 140 L 68 185 M 148 140 L 132 185" stroke="#F8FAFC" stroke-width="3"/>
+                    `;
+                    break;
+
+                case "sungjoon":
+                    characterSvg = `
+                        <path d="M 50 82 C 44 45, 68 38, 84 48 C 94 36, 110 36, 118 48 C 132 38, 156 45, 150 82 L 144 90 L 132 76 L 122 90 L 112 78 L 100 92 L 88 78 L 78 90 L 68 76 L 56 88 Z" fill="#334155"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 56 75 L 66 88 L 76 75 L 86 89 L 96 73 L 106 89 L 116 75 L 126 87 L 136 73 L 144 85 L 146 70 Z" fill="#475569"/>
+                        ${makeMapleEyes("#0EA5E9")}
+                        <circle cx="80" cy="99" r="10.5" fill="none" stroke="#7C2D12" stroke-width="2"/>
+                        <circle cx="120" cy="99" r="10.5" fill="none" stroke="#7C2D12" stroke-width="2"/>
+                        <line x1="90.5" y1="99" x2="109.5" y2="99" stroke="#7C2D12" stroke-width="2"/>
+                        <polygon points="68,60 70,64 75,64 71,67 73,71 68,68 63,71 65,67 61,64 66,64" fill="#FACC15" stroke="#CA8A04" stroke-width="1"/>
+                        <path d="M 60 138 Q 100 128 140 138 L 148 185 L 52 185 Z" fill="#475569"/>
+                    `;
+                    break;
+
+                case "sangyoon":
+                    characterSvg = `
+                        <path d="M 52 82 C 48 115, 152 115, 148 82 Z" fill="#451A03"/>
+                        <ellipse cx="100" cy="104" rx="40" ry="35" fill="#FFECD1"/>
+                        <path d="M 58 78 Q 75 90 90 80 Q 100 90 110 80 Q 125 90 142 78 L 144 70 L 56 70 Z" fill="#451A03"/>
+                        <path d="M 58 80 C 52 38, 148 38, 142 80 Z" fill="#1E3A8A"/>
+                        <rect x="54" y="74" width="92" height="12" rx="3" fill="#0F172A"/>
+                        <circle cx="100" cy="80" r="3" fill="#FACC15"/>
+                        ${makeMapleEyes("#1E293B")}
+                        <path d="M 60 138 Q 100 128 140 138 L 148 185 L 52 185 Z" fill="#1E3A8A"/>
+                        <path d="M 78 138 L 100 160 L 122 138" fill="#CBD5E1"/>
+                    `;
+                    break;
+
+                case "yeseul":
+                    characterSvg = `
+                        <path d="M 50 78 Q 42 135 55 162 L 145 162 Q 158 135 150 78 Z" fill="#09090B"/>
+                        <path d="M 52 75 C 48 40, 152 40, 148 75 Z" fill="#09090B"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <rect x="58" y="60" width="84" height="11" rx="3" fill="#3B82F6"/>
+                        <text x="100" y="68" font-family="sans-serif" font-weight="900" font-size="7" fill="#FFFFFF" text-anchor="middle">NYC</text>
+                        <path d="M 58 72 L 63 125 L 71 125 L 67 72 Z" fill="#09090B"/>
+                        <path d="M 142 72 L 137 125 L 129 125 L 133 72 Z" fill="#09090B"/>
+                        ${makeMapleEyes("#9333EA")}
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#18181B"/>
+                    `;
+                    break;
+
+                case "seonyul":
+                    characterSvg = `
+                        <path d="M 50 75 L 40 54 L 58 62 L 63 42 L 76 54 L 90 35 L 100 50 L 110 35 L 124 54 L 137 42 L 142 62 L 160 54 L 150 75 Z" fill="#064E3B"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 58 75 L 68 89 L 78 75 L 90 92 L 102 75 L 114 89 L 124 75 L 134 85 L 142 70 L 56 70 Z" fill="#064E3B"/>
+                        ${makeMapleEyes("#10B981")}
+                        <rect x="56" y="62" width="88" height="10" rx="3" fill="#10B981"/>
+                        <circle cx="100" cy="67" r="2.5" fill="#FFFFFF"/>
+                        <path d="M 60 138 Q 100 128 140 138 L 148 185 L 52 185 Z" fill="#18181B"/>
+                        <path d="M 82 138 L 82 185 M 118 138 L 118 185" stroke="#10B981" stroke-width="3"/>
+                    `;
+                    break;
+
+                case "seonyu":
+                    characterSvg = `
+                        <path d="M 52 82 C 46 115, 154 115, 148 82 Z" fill="#451A03"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 58 75 Q 80 66 100 80 Q 120 66 142 75 Q 130 90 114 85 Q 100 90 86 85 Q 70 90 58 75 Z" fill="#451A03"/>
+                        ${makeMapleEyes("#DC2626")}
+                        <circle cx="80" cy="99" r="10.5" fill="none" stroke="#333333" stroke-width="1.8"/>
+                        <circle cx="120" cy="99" r="10.5" fill="none" stroke="#333333" stroke-width="1.8"/>
+                        <line x1="90.5" y1="99" x2="109.5" y2="99" stroke="#333333" stroke-width="1.8"/>
+                        <path d="M 58 70 C 58 40, 142 40, 142 70 Z" fill="#1E3A8A"/>
+                        <path d="M 50 70 Q 100 60 150 70 L 154 75 Q 100 65 46 75 Z" fill="#DC2626"/>
+                        <path d="M 60 138 Q 100 128 140 138 L 148 185 L 52 185 Z" fill="#1E3A8A"/>
+                    `;
+                    break;
+
+                case "jinwoo":
+                    characterSvg = `
+                        <circle cx="62" cy="48" r="12" fill="#78350F"/>
+                        <circle cx="62" cy="48" r="6.5" fill="#FDE047"/>
+                        <circle cx="138" cy="48" r="12" fill="#78350F"/>
+                        <circle cx="138" cy="48" r="6.5" fill="#FDE047"/>
+                        <path d="M 56 60 Q 100 52 144 60" stroke="#78350F" stroke-width="3.5" fill="none"/>
+                        <path d="M 52 78 C 48 42, 152 42, 148 78 Z" fill="#78350F"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <circle cx="66" cy="74" r="10" fill="#78350F"/>
+                        <circle cx="82" cy="71" r="11" fill="#78350F"/>
+                        <circle cx="100" cy="69" r="12" fill="#78350F"/>
+                        <circle cx="118" cy="71" r="11" fill="#78350F"/>
+                        <circle cx="134" cy="74" r="10" fill="#78350F"/>
+                        ${makeMapleEyes("#D97706")}
+                        <path d="M 60 138 Q 100 128 140 138 L 148 185 L 52 185 Z" fill="#FEF3C7"/>
+                        <rect x="112" y="146" width="18" height="12" rx="2" fill="#1E3A8A"/>
+                    `;
+                    break;
+
+                case "doyoon":
+                    characterSvg = `
+                        <path d="M 50 75 L 40 54 L 58 62 L 65 42 L 78 55 L 94 36 L 104 52 L 120 36 L 130 55 L 142 42 L 146 62 L 160 54 L 150 75 Z" fill="#111827"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 58 75 L 68 89 L 78 75 L 90 92 L 102 75 L 114 89 L 124 75 L 134 85 L 142 70 L 56 70 Z" fill="#111827"/>
+                        ${makeMapleEyes("#374151")}
+                        <rect x="56" y="62" width="88" height="10" rx="3" fill="#1F2937"/>
+                        <path d="M 92 67 Q 100 64 108 70" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#4B5563"/>
+                        <path d="M 85 152 Q 100 146 115 160" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    `;
+                    break;
+
+                case "yeowon":
+                    characterSvg = `
+                        <path d="M 45 78 Q 28 120 40 162 Q 68 152 72 105 Z" fill="#F472B6"/>
+                        <path d="M 155 78 Q 172 120 160 162 Q 132 152 128 105 Z" fill="#F472B6"/>
+                        <path d="M 52 78 C 46 42, 154 42, 148 78 Q 128 94 100 86 Q 72 94 52 78 Z" fill="#FDBA74"/>
+                        <path d="M 62 98 C 40 94 38 106 62 109 Z" fill="#FFE5D9" stroke="#F472B6" stroke-width="1.2"/>
+                        <path d="M 138 98 C 160 94 162 106 138 109 Z" fill="#FFE5D9" stroke="#F472B6" stroke-width="1.2"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFE5D9"/>
+                        <path d="M 58 75 C 68 58, 132 58, 142 75 Q 122 90 100 82 Q 78 90 58 75 Z" fill="#FDBA74"/>
+                        <circle cx="64" cy="74" r="6" fill="#EC4899"/>
+                        <circle cx="64" cy="74" r="2.5" fill="#FACC15"/>
+                        ${makeMapleEyes("#EC4899")}
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#FCE7F3"/>
+                    `;
+                    break;
+
+                case "eun":
+                    characterSvg = `
+                        <circle cx="52" cy="52" r="14" fill="#EAB308"/>
+                        <circle cx="148" cy="52" r="14" fill="#EAB308"/>
+                        <path d="M 52 78 C 48 42, 152 42, 148 78 Q 128 94 100 86 Q 72 94 52 78 Z" fill="#EAB308"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 58 75 C 68 60, 132 60, 142 75 Q 122 89 100 83 Q 78 89 58 75 Z" fill="#CA8A04"/>
+                        <polygon points="52,46 54,50 58,50 55,52 56,56 52,54 48,56 49,52 46,50 50,50" fill="#FACC15"/>
+                        <polygon points="148,46 150,50 154,50 151,52 152,56 148,54 144,56 145,52 142,50 146,50" fill="#FACC15"/>
+                        ${makeMapleEyes("#EAB308")}
+                        <circle cx="80" cy="99" r="10.5" fill="none" stroke="#78350F" stroke-width="1.8"/>
+                        <circle cx="120" cy="99" r="10.5" fill="none" stroke="#78350F" stroke-width="1.8"/>
+                        <line x1="90.5" y1="99" x2="109.5" y2="99" stroke="#78350F" stroke-width="1.8"/>
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#FEF08A"/>
+                    `;
+                    break;
+
+                case "jiho":
+                    characterSvg = `
+                        <path d="M 52 78 C 48 42, 152 42, 148 78 Q 128 95 100 86 Q 72 95 52 78 Z" fill="#1F2937"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 56 75 C 68 58, 132 58, 144 75 Q 125 90 96 84 Q 78 90 56 75 Z" fill="#374151"/>
+                        <rect x="58" y="70" width="14" height="3.5" rx="1.5" fill="#E2E8F0" transform="rotate(-15 58 70)"/>
+                        ${makeMapleEyes("#059669")}
+                        <rect x="70" y="90" width="20" height="15" rx="3" fill="none" stroke="#18181B" stroke-width="2"/>
+                        <rect x="110" y="90" width="20" height="15" rx="3" fill="none" stroke="#18181B" stroke-width="2"/>
+                        <line x1="90" y1="98" x2="110" y2="98" stroke="#18181B" stroke-width="2"/>
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#D1FAE5"/>
+                        <path d="M 78 136 L 100 160 L 122 136" fill="#059669"/>
+                    `;
+                    break;
+
+                case "yoomin":
+                    characterSvg = `
+                        <path d="M 52 78 C 44 115, 156 115, 148 78 Z" fill="#7C2D12"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 56 75 Q 75 90 92 81 Q 108 92 128 81 Q 140 89 144 75 L 146 66 L 54 66 Z" fill="#7C2D12"/>
+                        <path d="M 58 66 C 58 40, 142 40, 142 66 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+                        <rect x="54" y="60" width="92" height="9" rx="2" fill="#1E3A8A"/>
+                        <circle cx="100" cy="48" r="4.5" fill="#EA580C"/>
+                        ${makeMapleEyes("#EA580C")}
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#FFFFFF"/>
+                        <path d="M 78 136 L 100 156 L 122 136" fill="#EA580C"/>
+                    `;
+                    break;
+
+                case "miso":
+                    characterSvg = `
+                        <polygon points="56,60 66,38 78,56" fill="#9333EA"/>
+                        <polygon points="60,58 66,43 74,56" fill="#F472B6"/>
+                        <polygon points="122,56 134,38 144,60" fill="#9333EA"/>
+                        <polygon points="126,56 134,43 140,58" fill="#F472B6"/>
+                        <path d="M 58 58 Q 100 50 142 58" stroke="#581C87" stroke-width="2.5" fill="none"/>
+                        <path d="M 45 78 Q 28 115 38 152 Q 55 142 60 102 Z" fill="#9333EA"/>
+                        <path d="M 155 78 Q 172 115 162 152 Q 145 142 140 102 Z" fill="#9333EA"/>
+                        <path d="M 52 78 C 48 42, 152 42, 148 78 Q 128 92 100 84 Q 72 92 52 78 Z" fill="#7E22CE"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 56 75 C 68 58, 132 58, 144 75 Q 125 90 100 83 Q 75 90 56 75 Z" fill="#9333EA"/>
+                        ${makeMapleEyes("#A855F7")}
+                        <circle cx="80" cy="99" r="10.5" fill="none" stroke="#333" stroke-width="1.8"/>
+                        <circle cx="120" cy="99" r="10.5" fill="none" stroke="#333" stroke-width="1.8"/>
+                        <line x1="90.5" y1="99" x2="109.5" y2="99" stroke="#333" stroke-width="1.8"/>
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#F3E8FF"/>
+                    `;
+                    break;
+
+                case "seoa":
+                    characterSvg = `
+                        <path d="M 84 48 L 90 32 L 100 42 L 110 32 L 116 48 Z" fill="#FACC15" stroke="#CA8A04" stroke-width="1.5"/>
+                        <path d="M 48 78 Q 30 125 44 165 Q 70 155 74 108 Z" fill="#0D9488"/>
+                        <path d="M 152 78 Q 170 125 156 165 Q 130 155 126 108 Z" fill="#0D9488"/>
+                        <path d="M 52 78 C 46 42, 154 42, 148 78 Q 128 94 100 85 Q 72 94 52 78 Z" fill="#14B8A6"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 58 75 C 68 58, 132 58, 142 75 Q 125 90 100 83 Q 75 90 58 75 Z" fill="#14B8A6"/>
+                        ${makeMapleEyes("#14B8A6")}
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#CCFBF1"/>
+                    `;
+                    break;
+
+                case "taekyeong":
+                    characterSvg = `
+                        <path d="M 50 75 L 40 54 L 58 62 L 63 40 L 76 54 L 92 32 L 102 50 L 116 32 L 126 54 L 138 40 L 142 62 L 160 54 L 150 75 Z" fill="#DC2626"/>
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 58 75 L 68 89 L 78 75 L 90 92 L 102 75 L 114 89 L 124 75 L 134 85 L 142 70 L 56 70 Z" fill="#DC2626"/>
+                        ${makeMapleEyes("#EF4444")}
+                        <rect x="56" y="62" width="88" height="10" rx="3" fill="#991B1B"/>
+                        <circle cx="100" cy="67" r="2.5" fill="#FACC15"/>
+                        <path d="M 60 136 Q 100 126 140 136 L 148 185 L 52 185 Z" fill="#EF4444"/>
+                    `;
+                    break;
+
+                default:
+                    characterSvg = `
+                        <ellipse cx="100" cy="102" rx="40" ry="36" fill="#FFECD1"/>
+                        <path d="M 52 78 C 52 45, 148 45, 148 78 Q 125 92 100 85 Q 75 92 52 78 Z" fill="#334155"/>
+                        ${makeMapleEyes("#3B82F6")}
+                        <path d="M 60 138 Q 100 128 140 138 L 148 185 L 52 185 Z" fill="${st.color || '#3B82F6'}"/>
+                    `;
+            }
+
+            return `
+                <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-md">
+                    <circle cx="100" cy="100" r="85" fill="${currentPts >= 300 ? '#FEF08A' : (currentPts >= 100 ? '#E2F5E9' : (st.bg || '#EFF6FF'))}"/>
+                    ${levelWings}
+                    ${characterSvg}
+                    ${levelCrown}
+                </svg>
+            `;
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            let bg = 'bg-stone-800 text-white';
+            if (type === 'success') bg = 'bg-emerald-600 text-white';
+            if (type === 'warning') bg = 'bg-amber-600 text-white';
+            if (type === 'error') bg = 'bg-red-600 text-white';
+            toast.className = `p-3 rounded-2xl shadow-lg text-xs font-bold toast-animate pointer-events-auto flex items-center justify-between gap-2 ${bg}`;
+            toast.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white font-bold ml-2">✕</button>`;
+            container.appendChild(toast);
+            setTimeout(() => { if (toast.parentElement) toast.remove(); }, 3500);
+        }
+
+        let pendingActionCallback = null;
+        function showActionConfirm(title, msg, icon = "❓", callback) {
+            document.getElementById('actionModalTitle').textContent = title;
+            document.getElementById('actionModalMessage').textContent = msg;
+            document.getElementById('actionModalIcon').textContent = icon;
+            pendingActionCallback = callback;
+            document.getElementById('actionConfirmModal').classList.remove('hidden');
+        }
+
+        function closeActionConfirmModal(confirmed) {
+            document.getElementById('actionConfirmModal').classList.add('hidden');
+            if (confirmed && typeof pendingActionCallback === 'function') pendingActionCallback();
+            pendingActionCallback = null;
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        function playCelebrationSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.12, ctx.currentTime + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.1 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + idx * 0.1);
+                    osc.stop(ctx.currentTime + idx * 0.1 + 0.3);
+                });
+            } catch(e) {}
+        }
+
+        function showCelebrationModal(itemName) {
+            document.getElementById('celebrationItemName').textContent = `${itemName} 교환 완료! 🎁`;
+            document.getElementById('celebrationModal').classList.remove('hidden');
+            playCelebrationSound();
+
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function closeCelebrationModal() {
+            document.getElementById('celebrationModal').classList.add('hidden');
+        }
+
+        function switchTab(tabName) {
+            const tabs = ['record', 'mission', 'ai', 'teacher'];
+            tabs.forEach(t => {
+                const content = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Content`);
+                const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
+                if (content) content.classList.add('hidden');
+                if (btn) {
+                    btn.classList.remove('bg-white', 'text-green-700', 'shadow-sm');
+                    btn.classList.add('text-stone-600');
+                }
+            });
+
+            const targetContent = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}Content`);
+            const targetBtn = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}Btn`);
+            if (targetContent) targetContent.classList.remove('hidden');
+            if (targetBtn) {
+                targetBtn.classList.remove('text-stone-600');
+                targetBtn.classList.add('bg-white', 'text-green-700', 'shadow-sm');
+            }
+
+            if (tabName === 'mission') renderMissions();
+            if (tabName === 'ai') renderAiMenuChips();
+            if (tabName === 'teacher') populateTeacherMenuInputs();
+        }
+
+        function openTeacherAuthModal() {
+            if (window.state && window.state.isTeacherAuthenticated) { switchTab('teacher'); return; }
+            const modal = document.getElementById('teacherAuthModal');
+            const pwdInput = document.getElementById('teacherPasswordInput');
+            const errTxt = document.getElementById('teacherAuthError');
+            if (modal) {
+                pwdInput.value = '';
+                errTxt.classList.add('hidden');
+                modal.classList.remove('hidden');
+                pwdInput.focus();
+            }
+        }
+
+        function closeTeacherAuthModal() {
+            document.getElementById('teacherAuthModal').classList.add('hidden');
+        }
+
+        function verifyTeacherPassword() {
+            const pwd = document.getElementById('teacherPasswordInput').value.trim();
+            if (pwd === '0214') {
+                if (window.state) window.state.isTeacherAuthenticated = true;
+                closeTeacherAuthModal();
+                switchTab('teacher');
+                showToast('🔑 선생님 모드로 확인되었습니다.', 'success');
+            } else {
+                document.getElementById('teacherAuthError').classList.remove('hidden');
+            }
+        }
+
+        function resolveTodayMenu() {
+            const now = new Date();
+            const yearStr = now.getFullYear();
+            const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+            const dayStr = String(now.getDate()).padStart(2, '0');
+            const dateKey = `${yearStr}-${monthStr}-${dayStr}`;
+
+            if (window.state && window.state.monthlyMenuMap && window.state.monthlyMenuMap[dateKey]) {
+                window.state.todayMenu = window.state.monthlyMenuMap[dateKey];
+            }
+            applyMealMenuToUI();
+        }
+
+        function applyMealMenuToUI() {
+            if (!window.state) return;
+            for (let i = 0; i < 5; i++) {
+                const el = document.getElementById(`menuName-${i}`);
+                if (el && window.state.todayMenu[i]) el.textContent = window.state.todayMenu[i];
+            }
+            renderAiMenuChips();
+        }
+
+        window.applyMealMenuToUI = applyMealMenuToUI;
+
+        function renderAiMenuChips() {
+            const chipsContainer = document.getElementById('aiQuickMenuChips');
+            if (!chipsContainer || !window.state) return;
+            chipsContainer.innerHTML = window.state.todayMenu.map(m => `
+                <button onclick="appendMenuToAiInput('${m}')" class="px-2.5 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1">
+                    ➕ ${m}
+                </button>
+            `).join('');
+        }
+
+        function appendMenuToAiInput(menuName) {
+            const inp = document.getElementById('aiMenuInput');
+            if (!inp) return;
+            if (inp.value.trim() === '') {
+                inp.value = menuName;
+            } else if (!inp.value.includes(menuName)) {
+                inp.value += `, ${menuName}`;
+            }
+            showToast(`'${menuName}' 메뉴가 입력되었습니다!`, 'info');
+        }
+
+        function toggleCompartment(idx) {
+            if (!window.state) return;
+            window.state.trayCleared[idx] = !window.state.trayCleared[idx];
+            updateTrayUI();
+        }
+
+        function updateTrayUI() {
+            if (!window.state) return;
+            let clearedCount = 0;
+            for (let i = 0; i < 5; i++) {
+                const comp = document.getElementById(`comp-${i}`);
+                if (!comp) continue;
+                const statusIcon = comp.querySelector('.status-icon');
+                if (window.state.trayCleared[i]) {
+                    clearedCount++;
+                    comp.classList.add('cleared');
+                    if (statusIcon) statusIcon.textContent = '✅';
+                } else {
+                    comp.classList.remove('cleared');
+                    if (statusIcon) statusIcon.textContent = '⬜';
+                }
+            }
+            const badge = document.getElementById('trayStatusBadge');
+            const btnTxt = document.getElementById('submitBtnText');
+            let pts = 0;
+            if (clearedCount >= 5) pts = 30;
+            else if (clearedCount >= 2) pts = 10;
+            
+            if (badge) badge.textContent = `${clearedCount}칸 비움 (${pts > 0 ? '+' + pts : 0}점)`;
+            if (btnTxt) btnTxt.textContent = `오늘의 기록 저장하기 (+${pts}점)`;
+        }
+
+        function submitTrayRecord() {
+            if (!window.state || !window.studentsData) return;
+            const sIdx = window.state.currentStudentIdx;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            if (window.state.lastSubmittedDate[sIdx] === todayStr) {
+                showToast('오늘은 이미 급식 기록을 완료했어요!', 'warning');
+                return;
+            }
+
+            let clearedCount = window.state.trayCleared.filter(Boolean).length;
+            let pts = 0;
+            if (clearedCount >= 5) pts = 30;
+            else if (clearedCount >= 2) pts = 10;
+
+            const modal = document.getElementById('confirmModal');
+            const dobInput = document.getElementById('dobInput');
+            const dobError = document.getElementById('dobError');
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+
+            const now = new Date();
+            const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+            const dateDisplayStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${weekDays[now.getDay()]})`;
+
+            const modalDateBadge = document.getElementById('modalDateBadge');
+            if (modalDateBadge) modalDateBadge.textContent = `📅 ${dateDisplayStr} 기록`;
+
+            if (!modal) return;
+            dobInput.value = '';
+            dobError.classList.add('hidden');
+            modal.classList.remove('hidden');
+
+            confirmBtn.onclick = function() {
+                const inputDob = dobInput.value.trim();
+                const correctDob = window.studentsData[sIdx].dob;
+                if (inputDob !== correctDob) {
+                    dobError.classList.remove('hidden');
+                    return;
+                }
+
+                modal.classList.add('hidden');
+
+                window.state.points[sIdx] += pts;
+                if (pts > 0) window.state.streaks[sIdx]++;
+                window.state.lastSubmittedDate[sIdx] = todayStr;
+                window.state.unlockedLogs[sIdx] = true;
+
+                const dateShortStr = `${now.getMonth() + 1}/${now.getDate()}`;
+                const timeStr = `${dateShortStr} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                const detailStr = clearedCount >= 5 ? '5칸 싹싹 다 먹음 (☆)' : (clearedCount >= 2 ? `${clearedCount}칸 다 먹음 (O)` : '미달');
+                
+                if (!Array.isArray(window.state.logs[sIdx])) window.state.logs[sIdx] = [];
+                window.state.logs[sIdx].unshift({ time: timeStr, cleared: detailStr, pts: pts });
+
+                window.state.trayCleared = [false, false, false, false, false];
+
+                syncToGoogleSheets(sIdx, pts, detailStr);
+                if (window.saveStateToFirestore) window.saveStateToFirestore();
+                updateTrayUI();
+                updateUI();
+                updateChart();
+                renderMissions();
+
+                showToast(`🎉 축하해요! +${pts}점을 모았어요!`, 'success');
+            };
+        }
+
+        function unlockPersonalHistory() {
+            if (!window.state || !window.studentsData) return;
+            const sIdx = window.state.currentStudentIdx;
+            const modal = document.getElementById('confirmModal');
+            const dobInput = document.getElementById('dobInput');
+            const dobError = document.getElementById('dobError');
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+
+            document.getElementById('modalTitle').textContent = "본인 기록 열람 확인";
+            document.getElementById('modalMessage').textContent = `${window.studentsData[sIdx].name} 학생 본인 확인을 위해 생년월일 6자리를 입력해 주세요.`;
+
+            if (!modal) return;
+            dobInput.value = '';
+            dobError.classList.add('hidden');
+            modal.classList.remove('hidden');
+
+            confirmBtn.onclick = function() {
+                const inputDob = dobInput.value.trim();
+                if (inputDob !== window.studentsData[sIdx].dob) {
+                    dobError.classList.remove('hidden');
+                    return;
+                }
+                modal.classList.add('hidden');
+                window.state.unlockedLogs[sIdx] = true;
+                updateUI();
+                showToast(`🔒 ${window.studentsData[sIdx].name} 학생의 개인 점수 기록함이 열렸습니다.`, 'success');
+            };
+        }
+
+        function redeemReward(rewardPts, rewardName) {
+            if (!window.state) return;
+            const sIdx = window.state.currentStudentIdx;
+            const currentPts = window.state.points[sIdx];
+
+            if (currentPts < rewardPts) {
+                showToast(`점수가 조금 부족해요! (${currentPts}pt / 필요: ${rewardPts}pt)`, 'warning');
+                return;
+            }
+
+            showActionConfirm(
+                "선물 교환 확인",
+                `🎁 [${rewardName}] 선물로 바꾸시겠어요?\n${rewardPts}점이 사용되며 실시간으로 내역이 저장돼요.`,
+                "🎁",
+                () => {
+                    window.state.points[sIdx] -= rewardPts;
+                    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const detailStr = `🎁 선물 사용: ${rewardName} (-${rewardPts}pt)`;
+
+                    if (!Array.isArray(window.state.logs[sIdx])) window.state.logs[sIdx] = [];
+                    window.state.logs[sIdx].unshift({ time: timeStr, cleared: detailStr, pts: -rewardPts });
+
+                    syncToGoogleSheets(sIdx, -rewardPts, detailStr);
+                    if (window.saveStateToFirestore) window.saveStateToFirestore();
+
+                    updateUI();
+                    updateChart();
+                    showCelebrationModal(rewardName);
+                }
+            );
+        }
+
+        function renderMissions() {
+            if (!window.state) return;
+            const sIdx = window.state.currentStudentIdx;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            if (window.state.missionsClaimedDate[sIdx] !== todayStr) {
+                window.state.missionsClaimedDate[sIdx] = todayStr;
+                window.state.missionsClaimedCount[sIdx] = 0;
+            }
+
+            const badge = document.getElementById('dailyClaimCountBadge');
+            if (badge) badge.textContent = window.state.missionsClaimedCount[sIdx];
+
+            let total5Clears = 0;
+            let totalCarbonKg = 0;
+            window.state.logs.forEach(studentLog => {
+                if (Array.isArray(studentLog)) {
+                    studentLog.forEach(log => {
+                        if (log.cleared && log.cleared.includes('5칸')) {
+                            total5Clears++;
+                            totalCarbonKg += 0.4;
+                        }
+                    });
+                }
+            });
+
+            const cardsContainer = document.getElementById('classMissionCardsContainer');
+            if (cardsContainer && Array.isArray(window.state.classMissions)) {
+                cardsContainer.innerHTML = window.state.classMissions.map(m => {
+                    let currentVal = total5Clears;
+                    if (m.id === 2) currentVal = Math.max(...window.state.streaks);
+                    if (m.id === 3) currentVal = Math.floor(total5Clears * 0.7);
+                    if (m.id === 4) currentVal = parseFloat(totalCarbonKg.toFixed(1));
+
+                    const pct = Math.min(100, Math.floor((currentVal / Math.max(1, m.target)) * 100));
+
+                    return `
+                        <div class="bg-white/95 p-4 rounded-2xl space-y-2 border border-emerald-300 shadow-sm">
+                            <div class="flex justify-between items-center font-bold">
+                                <span class="text-emerald-900 font-black">${m.title}</span>
+                                <span class="text-emerald-700 font-bold">${currentVal} / ${m.target} ${m.unit} (${pct}%)</span>
+                            </div>
+                            <div class="w-full bg-emerald-100 rounded-full h-3 overflow-hidden">
+                                <div style="width: ${pct}%" class="bg-emerald-500 h-full rounded-full transition-all duration-700"></div>
+                            </div>
+                            <p class="text-[11px] text-amber-900 font-extrabold">🎁 보상: ${m.reward}</p>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            const missionList = document.getElementById('dailyMissionList');
+            if (!missionList) return;
+
+            missionList.innerHTML = window.state.quests.slice(0, 3).map((q, qIdx) => {
+                const isCompleted = q.completed && q.completed[sIdx];
+                return `
+                    <div class="flex items-center justify-between p-3.5 ${isCompleted ? 'bg-green-50 border-green-300' : 'bg-stone-50 border-stone-200'} border rounded-2xl transition-all">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${isCompleted ? '✅' : '🎯'}</span>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">${q.diff || '⭐'}</span>
+                                    <h4 class="font-bold text-xs sm:text-sm ${isCompleted ? 'text-green-800' : 'text-stone-800'}">${q.title}</h4>
+                                </div>
+                                <p class="text-xs ${isCompleted ? 'text-green-600 font-bold' : 'text-stone-500'} mt-0.5">선물 점수: <strong class="text-green-700">+${q.reward}pt</strong></p>
+                            </div>
+                        </div>
+                        ${isCompleted ? `
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-200 text-green-800">완료됨</span>
+                        ` : `
+                            <button onclick="claimMission(${qIdx})" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all">
+                                미션 완료
+                            </button>
+                        `}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function claimMission(qIdx) {
+            if (!window.state || !window.students) return;
+            const sIdx = window.state.currentStudentIdx;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            if (window.state.missionsClaimedDate[sIdx] !== todayStr) {
+                window.state.missionsClaimedDate[sIdx] = todayStr;
+                window.state.missionsClaimedCount[sIdx] = 0;
+            }
+
+            if (window.state.missionsClaimedCount[sIdx] >= 2) {
+                showToast('⚠️ 하루에 미션 보상은 최대 2개까지만 받을 수 있어요!', 'warning');
+                return;
+            }
+
+            const q = window.state.quests[qIdx];
+            if (q.completed && q.completed[sIdx]) {
+                showToast('이미 받으신 미션이에요.', 'info');
+                return;
+            }
+
+            if (!q.completed) q.completed = Array(window.students.length).fill(false);
+            q.completed[sIdx] = true;
+            window.state.missionsClaimedCount[sIdx]++;
+            window.state.points[sIdx] += q.reward;
+
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const detailStr = `🎯 미션 달성 보상: ${q.title} (+${q.reward}pt)`;
+
+            if (!Array.isArray(window.state.logs[sIdx])) window.state.logs[sIdx] = [];
+            window.state.logs[sIdx].unshift({ time: timeStr, cleared: detailStr, pts: q.reward });
+
+            syncToGoogleSheets(sIdx, q.reward, detailStr);
+            if (window.saveStateToFirestore) window.saveStateToFirestore();
+            updateUI();
+            updateChart();
+            renderMissions();
+            showToast(`🎉 미션 완료! +${q.reward}점을 얻었어요! (오늘: ${window.state.missionsClaimedCount[sIdx]}/2)`, 'success');
+        }
+
+        async function refreshAiMissions() {
+            const btn = document.getElementById('btnRefreshMissions');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '✨ 생각 중...';
+            }
+
+            const sName = window.studentsData[window.state.currentStudentIdx].name;
+            const menuText = window.state.todayMenu.join(', ');
+
+            try {
+                const apiKey = window.state.userApiKey || "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                const prompt = `초등학교 5학년 ${sName} 학생을 위한 오늘 급식(${menuText}) 잔반 제로 미션 3개를 난이도 1pt, 2pt, 3pt 순으로 만들어줘. JSON 형식으로 [{"diff":"⭐ 1pt","title":"미션제목","reward":1},{"diff":"⭐⭐ 2pt","title":"미션제목","reward":2},{"diff":"⭐⭐⭐ 3pt","title":"미션제목","reward":3}] 만 출력해줘.`;
+                
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const json = await res.json();
+                const aiTxt = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+                const cleanJsonStr = aiTxt ? aiTxt.replace(/```json|```/g, '').trim() : '';
+                const parsedQuests = JSON.parse(cleanJsonStr);
+
+                if (Array.isArray(parsedQuests) && parsedQuests.length > 0) {
+                    window.state.quests = parsedQuests.map((q, i) => ({
+                        id: i + 1,
+                        diff: q.diff || `⭐ ${i+1}pt`,
+                        title: q.title,
+                        reward: q.reward || (i + 1),
+                        completed: Array(window.students.length).fill(false)
+                    }));
+                    if (window.saveStateToFirestore) window.saveStateToFirestore();
+                    renderMissions();
+                    showToast('🤖 AI 싹싹이가 새로운 추천 미션을 만들었어요!', 'success');
+                    return;
+                }
+            } catch(e) {
+                const sampleQuests = [
+                    [
+                        { id: 1, diff: "⭐ 1pt", title: "오늘 급식 식판 2칸 이상 깨끗이 비우기", reward: 1, completed: Array(window.students.length).fill(false) },
+                        { id: 2, diff: "⭐⭐ 2pt", title: "시금치나 나물 반찬 남기지 않고 싹싹 다 먹기", reward: 2, completed: Array(window.students.length).fill(false) },
+                        { id: 3, diff: "⭐⭐⭐ 3pt", title: "국물까지 깔끔하게 다 마시고 잔반 0개 만들기", reward: 3, completed: Array(window.students.length).fill(false) }
+                    ],
+                    [
+                        { id: 1, diff: "⭐ 1pt", title: "밥과 국 다 먹고 2칸 이상 깨끗이 비우기", reward: 1, completed: Array(window.students.length).fill(false) },
+                        { id: 2, diff: "⭐⭐ 2pt", title: "AI 싹싹이 칭찬 편지 받아보기", reward: 2, completed: Array(window.students.length).fill(false) },
+                        { id: 3, diff: "⭐⭐⭐ 3pt", title: "오늘 식판 5칸 전부 완벽하게 다 비우기", reward: 3, completed: Array(window.students.length).fill(false) }
+                    ]
+                ];
+                const randomIndex = Math.floor(Math.random() * sampleQuests.length);
+                window.state.quests = sampleQuests[randomIndex];
+                if (window.saveStateToFirestore) window.saveStateToFirestore();
+                renderMissions();
+                showToast('🤖 새로운 도전 미션으로 교체되었어요!', 'success');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '✨ AI 미션 새로고침';
+                }
+            }
+        }
+
+        async function generateAiPraise() {
+            if (!window.state || !window.studentsData) return;
+            const input = document.getElementById('aiMenuInput').value.trim();
+            const btn = document.getElementById('btnAiPraise');
+            const resContainer = document.getElementById('aiResultContainer');
+            const praiseTxt = document.getElementById('aiPraiseText');
+
+            if (!input) {
+                showToast('오늘 가장 맛있게 먹은 메뉴를 선택하거나 적어주세요!', 'warning');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>🤖</span> AI 싹싹이가 생각하는 중...';
+
+            const sName = window.studentsData[window.state.currentStudentIdx].name;
+
+            try {
+                const apiKey = window.state.userApiKey || "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                const prompt = `초등학교 5학년 ${sName} 학생이 오늘 급식에서 '${input}'(을)를 맛있게 먹고 잔반을 깔끔히 비웠어! 잔반 요정 '싹싹이' 캐릭터 입장에서 밝고 귀엽게 다정한 말투로 칭찬 메시지와 줄인 탄소 배출량 환산(약 0.4kg) 칭찬을 3줄 내외로 해줘.`;
+                
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const json = await res.json();
+                const aiMsg = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (aiMsg) {
+                    praiseTxt.textContent = aiMsg;
+                    resContainer.classList.remove('hidden');
+                    showToast('AI 싹싹이의 칭찬 편지가 도착했어요! ✨', 'success');
+                    return;
+                }
+            } catch(e) {}
+
+            praiseTxt.textContent = `🌟 안녕 ${sName}! 오늘 '${input}'(을)를 남기지 않고 맛있게 먹었다니 정말 멋져!\n🌱 잔반을 남기지 않아서 약 0.4kg의 탄소를 줄였단다. 지구가 너 덕분에 더 깨끗해지고 있어!\n👍 앞으로도 맛있는 급식 싹싹 비우고 에코 히어로가 되어보자!`;
+            resContainer.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<span>🤖</span> AI 싹싹이 칭찬 들으러 가기';
+            showToast('AI 싹싹이의 칭찬 편지가 도착했어요! ✨', 'success');
+        }
+
+        async function generateAiPeriodReport(period) {
+            if (!window.state || !window.studentsData) return;
+            const sIdx = window.state.currentStudentIdx;
+            const student = window.studentsData[sIdx];
+            const logs = window.state.logs[sIdx] || [];
+            const periodLabel = period === 'week' ? '1주일 (최근 7일)' : '1개월 (최근 30일)';
+            const titleBadge = document.getElementById('aiReportTitleBadge');
+            const studentBadge = document.getElementById('aiReportStudentBadge');
+            const container = document.getElementById('aiPeriodReportContainer');
+            const reportTextEl = document.getElementById('aiReportText');
+
+            if (titleBadge) titleBadge.textContent = `📊 ${period === 'week' ? '주간' : '월간'} 급식 리포트 (${periodLabel})`;
+            if (studentBadge) studentBadge.textContent = `${student.name} 학생`;
+
+            const totalCount = logs.length;
+            const cleared5Count = logs.filter(l => l.cleared && l.cleared.includes('5칸')).length;
+            const ptsGained = logs.reduce((acc, l) => acc + (l.pts > 0 ? l.pts : 0), 0);
+            const carbonReduced = (cleared5Count * 0.4 + (totalCount - cleared5Count) * 0.15).toFixed(1);
+            const treesPlanted = (carbonReduced / 0.5).toFixed(1);
+
+            document.getElementById('reportMetricTotal').textContent = `${totalCount}회`;
+            document.getElementById('reportMetric5Clears').textContent = `${cleared5Count}회`;
+            document.getElementById('reportMetricPts').textContent = `${ptsGained}pt`;
+            document.getElementById('reportMetricCarbon').textContent = `${carbonReduced} kg`;
+
+            container.classList.remove('hidden');
+            reportTextEl.textContent = `🤖 Gemini AI가 ${student.name} 학생의 최근 ${periodLabel} 잔반 기록을 분석해 보고서를 생성하고 있습니다...`;
+
+            try {
+                const apiKey = window.state.userApiKey || "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                const prompt = `초등학교 5학년 ${student.name} 학생의 최근 ${periodLabel} 동안의 급식 잔반 기록 리포트를 써줘.
+- 총 참여 횟수: ${totalCount}회
+- 5칸 완판(싹싹) 횟수: ${cleared5Count}회
+- 획득 포인트: ${ptsGained}pt
+- 줄인 탄소 배출량: ${carbonReduced}kg (소나무 약 ${treesPlanted}그루 심은 효과)
+
+잔반 요정 '싹싹이' 입장에서 5학년 초등학생 눈높이에 맞게 다정하고 칭찬 가득한 톤으로 다음 4가지 주제로 나누어 작성해줘:
+1. 🌟 ${periodLabel} 식습관 성실함 칭찬
+2. 🥗 싹싹이의 영양 & 식판 클리어 평가
+3. 🌱 지구가 기뻐하는 환경 기여 효과 (탄소 및 소나무 환산)
+4. 🎯 다음 ${period === 'week' ? '주' : '달'}를 위한 AI 싹싹이의 응원 다짐`;
+
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const json = await res.json();
+                const aiReport = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (aiReport) {
+                    reportTextEl.textContent = aiReport;
+                    showToast(`📊 ${student.name} 학생의 ${period === 'week' ? '주간' : '월간'} AI 보고서가 완성되었습니다!`, 'success');
+                    return;
+                }
+            } catch(e) {}
+
+            reportTextEl.textContent = `🌟 [${student.name} 학생의 ${periodLabel} 급식 리포트]\n\n` +
+                `1. 🌟 성실함 칭찬: ${periodLabel} 동안 총 ${totalCount}번 급식판을 기록하며 꾸준히 잔반 줄이기에 참여했어요!\n` +
+                `2. 🥗 식판 완판 평가: 5칸 모두 깔끔히 비운 싹싹 완료가 ${cleared5Count}회나 됩니다. 멋진 식습관이에요!\n` +
+                `3. 🌱 환경 보호 효과: 음식물 쓰레기를 줄여 탄소 배출량을 약 ${carbonReduced}kg 줄였습니다. 이는 어린 소나무 약 ${treesPlanted}그루를 심은 효과와 같아요!\n` +
+                `4. 🎯 싹싹이의 응원: 앞으로도 편식 없이 맛있게 먹고 우리 반 싹싹 왕이 되어보아요! 👍`;
+            
+            showToast(`📊 ${student.name} 학생의 ${period === 'week' ? '주간' : '월간'} 리포트가 완성되었습니다!`, 'success');
+        }
+
+        function saveGoogleWebhookUrl() {
+            const url = document.getElementById('googleWebhookUrlInput').value.trim();
+            if (window.state) window.state.googleWebhookUrl = url;
+            localStorage.setItem('google_sheet_webhook_url', url);
+            showToast('구글 시트 주소가 저장되었습니다.', 'success');
+        }
+
+        function copyAppsScriptTemplate() {
+            const code = `function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = JSON.parse(e.postData.contents);
+    sheet.appendRow([
+      data.timestamp || new Date(),
+      data.studentName || '',
+      data.studentGender || '',
+      data.pts || 0,
+      data.totalPts || 0,
+      data.clearedDetail || '',
+      data.streak || 0
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({result: "success"})).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({result: "error", error: err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Apps Script 코드가 복사되었습니다!', 'success');
+            } catch (err) {
+                showToast('복사에 실패했습니다.', 'warning');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function saveGeminiApiKey() {
+            const key = document.getElementById('geminiApiKeyInput').value.trim();
+            if (window.state) window.state.userApiKey = key;
+            localStorage.setItem('gemini_api_key', key);
+            showToast('Gemini API 키가 저장되었습니다.', 'success');
+        }
+
+        function saveClassMissionsByTeacher() {
+            if (!window.state) return;
+            for (let i = 0; i < 4; i++) {
+                const titleVal = document.getElementById(`teacherMissionTitle-${i}`)?.value.trim();
+                const targetVal = parseInt(document.getElementById(`teacherMissionTarget-${i}`)?.value);
+                const rewardVal = document.getElementById(`teacherMissionReward-${i}`)?.value.trim();
+
+                if (titleVal) window.state.classMissions[i].title = titleVal;
+                if (!isNaN(targetVal)) window.state.classMissions[i].target = targetVal;
+                if (rewardVal) window.state.classMissions[i].reward = rewardVal;
+            }
+
+            if (window.saveStateToFirestore) window.saveStateToFirestore();
+            renderMissions();
+            showToast('선생님 단체 미션 설정이 성공적으로 저장되었습니다!', 'success');
+        }
+
+        function saveMealMenuByTeacher() {
+            if (!window.state) return;
+            for (let i = 0; i < 5; i++) {
+                const val = document.getElementById(`teacherMenu-${i}`)?.value.trim();
+                if (val) window.state.todayMenu[i] = val;
+            }
+            if (window.saveStateToFirestore) window.saveStateToFirestore();
+            applyMealMenuToUI();
+            showToast('오늘의 급식 식단이 성공적으로 변경되었습니다.', 'success');
+        }
+
+        function populateTeacherMenuInputs() {
+            if (!window.state || !window.studentsData) return;
+            for (let i = 0; i < 5; i++) {
+                const inp = document.getElementById(`teacherMenu-${i}`);
+                if (inp) inp.value = window.state.todayMenu[i] || '';
+            }
+
+            const missionEditGrid = document.getElementById('teacherMissionEditGrid');
+            if (missionEditGrid && Array.isArray(window.state.classMissions)) {
+                missionEditGrid.innerHTML = window.state.classMissions.map((m, idx) => `
+                    <div class="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
+                        <label class="font-bold text-stone-700 block">미션 ${idx + 1} 제목</label>
+                        <input type="text" id="teacherMissionTitle-${idx}" value="${m.title}" class="w-full p-2 border rounded-xl text-xs bg-white font-bold">
+                        <div class="flex gap-2">
+                            <div class="w-1/3">
+                                <label class="text-[10px] text-stone-500 font-bold block">목표 수치</label>
+                                <input type="number" id="teacherMissionTarget-${idx}" value="${m.target}" class="w-full p-2 border rounded-xl text-xs bg-white font-bold text-center">
+                            </div>
+                            <div class="w-2/3">
+                                <label class="text-[10px] text-stone-500 font-bold block">달성 보상 내용</label>
+                                <input type="text" id="teacherMissionReward-${idx}" value="${m.reward}" class="w-full p-2 border rounded-xl text-xs bg-white font-bold">
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const webhookInp = document.getElementById('googleWebhookUrlInput');
+            if (webhookInp) webhookInp.value = window.state.googleWebhookUrl;
+
+            document.getElementById('geminiApiKeyInput').value = window.state.userApiKey;
+
+            const tbody = document.getElementById('teacherStudentTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = window.studentsData.map((st, idx) => `
+                <tr class="hover:bg-amber-50/50 transition-all">
+                    <td class="p-3 font-bold text-stone-600">${idx + 1}</td>
+                    <td class="p-3 font-bold text-stone-800">${st.name} (${st.gender})</td>
+                    <td class="p-3 font-black text-green-700" id="teacherPt-${idx}">${window.state.points[idx]} pt</td>
+                    <td class="p-3">
+                        <div class="flex items-center gap-1.5">
+                            <input type="number" id="manualScoreInput-${idx}" value="${window.state.points[idx]}" class="w-20 p-1.5 border rounded-lg text-center text-xs font-bold bg-stone-50">
+                            <button onclick="setStudentPointByTeacher(${idx})" class="px-2.5 py-1.5 bg-stone-700 hover:bg-stone-800 text-white rounded-lg text-xs font-bold">적용</button>
+                            <button onclick="addPointByTeacher(${idx}, 10)" class="px-2 py-1.5 bg-green-100 text-green-800 hover:bg-green-200 rounded-lg text-xs font-bold">+10</button>
+                            <button onclick="addPointByTeacher(${idx}, -10)" class="px-2 py-1.5 bg-stone-200 text-stone-700 hover:bg-stone-300 rounded-lg text-xs font-bold">-10</button>
+                        </div>
+                    </td>
+                    <td class="p-3">
+                        <button onclick="praiseStudentByTeacher(${idx})" class="px-2.5 py-1.5 bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-lg text-xs font-bold flex items-center gap-1">
+                            ⭐ 칭찬 (+20)
+                        </button>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="zeroStudentPointByTeacher(${idx})" class="px-2.5 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-xs font-bold">
+                            ⚠️ 0점 처리
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function setStudentPointByTeacher(idx) {
+            if (!window.state || !window.studentsData) return;
+            const val = parseInt(document.getElementById(`manualScoreInput-${idx}`).value);
+            if (!isNaN(val)) {
+                window.state.points[idx] = Math.max(0, val);
+                if (window.saveStateToFirestore) window.saveStateToFirestore();
+                updateTeacherRow(idx);
+                updateUI();
+                updateChart();
+                showToast(`${window.studentsData[idx].name} 학생 점수가 ${val}pt로 수정되었습니다.`, "success");
+            }
+        }
+
+        function addPointByTeacher(idx, delta) {
+            if (!window.state) return;
+            window.state.points[idx] = Math.max(0, window.state.points[idx] + delta);
+            if (window.saveStateToFirestore) window.saveStateToFirestore();
+            updateTeacherRow(idx);
+            updateUI();
+            updateChart();
+        }
+
+        function praiseStudentByTeacher(idx) {
+            if (!window.state || !window.studentsData) return;
+            window.state.points[idx] += 20;
+            if (window.saveStateToFirestore) window.saveStateToFirestore();
+            updateTeacherRow(idx);
+            updateUI();
+            updateChart();
+            showToast(`⭐ ${window.studentsData[idx].name} 학생에게 칭찬 스티커(+20pt)가 부여되었습니다!`, "success");
+        }
+
+        function zeroStudentPointByTeacher(idx) {
+            if (!window.studentsData) return;
+            showActionConfirm("점수 깎기 처리", `⚠️ ${window.studentsData[idx].name} 학생의 점수를 0점으로 만드시겠습니까?`, "⚠️", () => {
+                if (!window.state) return;
+                window.state.points[idx] = 0;
+                window.state.streaks[idx] = 0;
+                if (window.saveStateToFirestore) window.saveStateToFirestore();
+                updateTeacherRow(idx);
+                updateUI();
+                updateChart();
+                showToast(`${window.studentsData[idx].name} 학생 점수가 0점 처리되었습니다.`, "warning");
+            });
+        }
+
+        function promptResetAllPoints() {
+            if (!window.students) return;
+            showActionConfirm("전체 초기화", "⚠️ 모든 학생의 점수를 0점으로 초기화하시겠습니까?", "🚨", () => {
+                if (!window.state) return;
+                window.state.points = Array(window.students.length).fill(0);
+                window.state.streaks = Array(window.students.length).fill(0);
+                window.state.lastSubmittedDate = Array(window.students.length).fill(null);
+                if (window.saveStateToFirestore) window.saveStateToFirestore();
+                populateTeacherMenuInputs();
+                updateUI();
+                updateChart();
+                showToast("모든 학생의 점수가 0점으로 초기화되었습니다.", "success");
+            });
+        }
+
+        function updateTeacherRow(idx) {
+            if (!window.state) return;
+            const ptEl = document.getElementById(`teacherPt-${idx}`);
+            if (ptEl) ptEl.textContent = `${window.state.points[idx]} pt`;
+            const inputEl = document.getElementById(`manualScoreInput-${idx}`);
+            if (inputEl) inputEl.value = window.state.points[idx];
+        }
+
+        function updateUI() {
+            if (!window.state || !window.studentsData || !window.rewards) return;
+            const sIdx = window.state.currentStudentIdx;
+            const currentPts = window.state.points[sIdx];
+            const student = window.studentsData[sIdx];
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            const myPtsEl = document.getElementById('myPointsDisplay');
+            if (myPtsEl) myPtsEl.textContent = `${currentPts} pt`;
+
+            const streakEl = document.getElementById('streakCount');
+            if (streakEl) streakEl.textContent = window.state.streaks[sIdx];
+
+            const titleEl = document.getElementById('studentAvatarTitle');
+            if (titleEl) titleEl.textContent = student.name;
+
+            const archEl = document.getElementById('studentArchetypeBadge');
+            if (archEl) archEl.textContent = student.title;
+            
+            const gBadge = document.getElementById('studentGenderBadge');
+            if (gBadge) {
+                gBadge.textContent = student.gender;
+                gBadge.className = student.gender === "여" ? 
+                    "text-[10px] px-2 py-0.5 rounded-full font-bold bg-pink-100 text-pink-800" : 
+                    "text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800";
+            }
+
+            const avatarSvg = document.getElementById('avatarSvgContainer');
+            if (avatarSvg) avatarSvg.innerHTML = renderStudentAvatarSVG(sIdx, currentPts);
+
+            const aura = document.getElementById('avatarAura');
+            if (aura) {
+                if (currentPts >= 300) aura.classList.remove('hidden');
+                else aura.classList.add('hidden');
+            }
+
+            const dailyBadge = document.getElementById('dailyStatusBadge');
+            if (dailyBadge) {
+                if (window.state.lastSubmittedDate[sIdx] === todayStr) {
+                    dailyBadge.textContent = "오늘 완료! ✅";
+                    dailyBadge.className = "px-2.5 py-1 bg-green-100 text-green-800 font-bold rounded-full text-xs border border-green-300";
+                } else {
+                    dailyBadge.textContent = "오늘 아직 안함 ⏳";
+                    dailyBadge.className = "px-2.5 py-1 bg-amber-100 text-amber-800 font-bold rounded-full text-xs border border-amber-300";
+                }
+            }
+
+            let next = window.rewards.find(r => r.pts > currentPts) || window.rewards[window.rewards.length - 1];
+            let prevPts = 0;
+            const currentRewardIdx = window.rewards.findIndex(r => r.pts > currentPts);
+            if (currentRewardIdx > 0) prevPts = window.rewards[currentRewardIdx - 1].pts;
+
+            const progress = Math.min(100, Math.floor(((currentPts - prevPts) / Math.max(1, next.pts - prevPts)) * 100));
+            const pBar = document.getElementById('progressBar');
+            if (pBar) pBar.style.width = `${progress}%`;
+            const pTxt = document.getElementById('progressText');
+            if (pTxt) pTxt.textContent = `${progress}%`;
+            const nextRwd = document.getElementById('nextRewardName');
+            if (nextRwd) nextRwd.textContent = next.name;
+
+            renderRewards();
+
+            const logContainer = document.getElementById('historyLogList');
+            const logBadge = document.getElementById('logPrivacyBadge');
+            const unlockBtn = document.getElementById('btnUnlockHistory');
+
+            if (logContainer) {
+                const isUnlocked = window.state.unlockedLogs[sIdx];
+                if (!isUnlocked) {
+                    logContainer.innerHTML = `
+                        <div class="text-stone-400 text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                            <p class="font-bold text-stone-600 mb-1">🔒 본인만 볼 수 있는 비밀 기록입니다.</p>
+                            <p class="text-[11px] text-stone-500">위의 [오늘의 기록 저장하기]를 완료하거나 [본인 확인]을 거치면 내 기록이 나타납니다.</p>
+                        </div>
+                    `;
+                    if (logBadge) logBadge.textContent = "🔒 잠김 (나만 보기)";
+                    if (unlockBtn) unlockBtn.classList.remove('hidden');
+                } else {
+                    if (logBadge) logBadge.textContent = "🔓 본인 확인 완료";
+                    if (unlockBtn) unlockBtn.classList.add('hidden');
+
+                    const logs = window.state.logs[sIdx] || [];
+                    if (logs.length === 0) {
+                        logContainer.innerHTML = '<p class="text-stone-400 text-center py-3 font-bold">아직 기록이 없어요.</p>';
+                    } else {
+                        logContainer.innerHTML = logs.map(l => `
+                            <div class="flex items-center justify-between p-2.5 bg-stone-50 rounded-xl border border-stone-100">
+                                <span class="text-stone-500 font-medium">${l.time}</span>
+                                <span class="font-bold ${l.pts < 0 ? 'text-red-600' : 'text-stone-700'}">${l.cleared} (${l.pts > 0 ? '+' + l.pts : l.pts}pt)</span>
+                            </div>
+                        `).join('');
+                    }
+                }
+            }
+        }
+
+        window.updateUI = updateUI;
+
+        function renderRewards() {
+            const grid = document.getElementById('rewardGrid');
+            if (!grid || !window.state || !window.rewards) return;
+            grid.innerHTML = '';
+            const currentPts = window.state.points[window.state.currentStudentIdx];
+
+            window.rewards.forEach(reward => {
+                const card = document.createElement('div');
+                card.id = `reward-${reward.pts}`;
+                const isUnlocked = currentPts >= reward.pts;
+                
+                card.className = `reward-card p-3 border rounded-2xl text-center transition-all shadow-sm ${isUnlocked ? 'unlocked border-green-500 bg-green-50/80' : 'locked bg-stone-50'}`;
+                card.onclick = () => {
+                    if (isUnlocked) {
+                        redeemReward(reward.pts, reward.name);
+                    } else {
+                        showToast(`점수가 조금 부족해요! (${currentPts}pt / 필요: ${reward.pts}pt)`, 'warning');
+                    }
+                };
+
+                card.innerHTML = `
+                    <div class="text-2xl mb-1">${reward.icon}</div>
+                    <div class="text-[10px] font-bold ${isUnlocked ? 'text-green-700' : 'text-stone-400'}">${reward.pts}pt</div>
+                    <div class="text-[11px] font-bold leading-tight ${isUnlocked ? 'text-stone-900' : 'text-stone-600'}">${reward.name}</div>
+                    <div class="mt-1 text-[9px] font-bold ${isUnlocked ? 'text-green-600' : 'text-stone-400'}">
+                        ${isUnlocked ? '눌러서 뽑기 🎁' : '잠김 🔒'}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        let chart;
+        function initChart() {
+            const canvas = document.getElementById('rankingChart');
+            if (!canvas || !window.students || !window.state) return;
+            const ctx = canvas.getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: window.students,
+                    datasets: [{
+                        label: '내가 모은 점수',
+                        data: window.state.points,
+                        backgroundColor: window.students.map((_, i) => i === window.state.currentStudentIdx ? '#15803d' : '#A7D397'),
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { 
+                            beginAtZero: true, 
+                            grid: { display: false },
+                            suggestedMax: 50,
+                            ticks: {
+                                precision: 0,
+                                stepSize: 10,
+                                callback: function(value) { return Number.isInteger(value) ? value + '점' : ''; }
+                            }
+                        },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!window.state || !window.studentsData) return;
+            if (!chart) {
+                initChart();
+                if (!chart) return;
+            }
+
+            const maxPt = Math.max(...window.state.points, 0);
+            let dynamicStep = 10;
+            if (maxPt > 500) dynamicStep = 100;
+            else if (maxPt > 200) dynamicStep = 50;
+            else if (maxPt > 100) dynamicStep = 20;
+
+            chart.options.scales.x.ticks.stepSize = dynamicStep;
+            chart.options.scales.x.suggestedMax = Math.max(50, Math.ceil((maxPt + 10) / dynamicStep) * dynamicStep);
+
+            chart.data.datasets[0].data = window.state.points;
+            chart.data.datasets[0].backgroundColor = window.students.map((_, i) => i === window.state.currentStudentIdx ? '#15803d' : '#A7D397');
+            chart.update();
+
+            const aiRankEl = document.getElementById('aiRankingSummary');
+            if (aiRankEl) {
+                if (maxPt === 0) {
+                    aiRankEl.textContent = "🌱 모두 함께 싹싹 비우고 10점부터 차곡차곡 점수를 모아보아요!";
+                } else {
+                    const topStudentIdx = window.state.points.indexOf(maxPt);
+                    const topStudentName = window.studentsData[topStudentIdx]?.name || '';
+                    aiRankEl.textContent = `👑 현재 싹싹 왕 1위는 ${topStudentName} 학생 (${maxPt}점)! 점수가 올라가면 눈금이 자동 조정돼요.`;
+                }
+            }
+        }
+
+        window.updateChart = updateChart;
+
+        function syncToGoogleSheets(sIdx, pts, clearedDetail) {
+            if (!window.state || !window.state.googleWebhookUrl || !window.studentsData) return;
+            const student = window.studentsData[sIdx];
+            const payload = {
+                studentName: student.name,
+                studentGender: student.gender,
+                pts: pts,
+                totalPts: window.state.points[sIdx],
+                clearedDetail: clearedDetail,
+                streak: window.state.streaks[sIdx],
+                timestamp: new Date().toLocaleString()
+            };
+            fetch(window.state.googleWebhookUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(err => console.log('Google Sheets sync error:', err));
+        }
+
+        async function processMonthlyPlanFile() {
+            const fileInput = document.getElementById('monthlyPlanFileInput');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showToast('업로드할 식단표 파일을 선택해 주세요.', 'warning');
+                return;
+            }
+            const btn = document.getElementById('btnParsePlan');
+            btn.disabled = true;
+            btn.innerHTML = '<span>🤖</span> 식단 분석 중...';
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                try {
+                    const apiKey = window.state.userApiKey || "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                    const prompt = "Act as an expert school nutritionist. Extract daily lunch menu items (side1, side2, side3, rice, soup) mapped by date in YYYY-MM-DD format from this document into JSON array: [{date:'YYYY-MM-DD', side1:'', side2:'', side3:'', rice:'', soup:''}]";
+                    
+                    let parts = [{ text: prompt }];
+                    if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+                        parts.push({
+                            inlineData: {
+                                mimeType: file.type,
+                                data: e.target.result.split(',')[1]
+                            }
+                        });
+                    }
+
+                    const res = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ contents: [{ parts: parts }] })
+                    });
+                    const resJson = await res.json();
+                    const rawText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (rawText) {
+                        const cleanJson = rawText.replace(/```json|```/g, '').trim();
+                        const parsedList = JSON.parse(cleanJson);
+                        if (Array.isArray(parsedList)) {
+                            parsedList.forEach(item => {
+                                if (item.date) {
+                                    window.state.monthlyMenuMap[item.date] = [
+                                        item.side1 || "반찬1", item.side2 || "반찬2", item.side3 || "반찬3",
+                                        item.rice || "밥", item.soup || "국"
+                                    ];
+                                }
+                            });
+                            resolveTodayMenu();
+                            populateTeacherMenuInputs();
+                            if (window.saveStateToFirestore) window.saveStateToFirestore();
+                            showToast(`🤖 AI가 식단을 성공적으로 분석하여 반영했습니다!`, 'success');
+                            return;
+                        }
+                    }
+                    showToast('식단표 파일 분석 완료! 수동 변경 메뉴를 이용하실 수 있습니다.', 'success');
+                } catch(err) {
+                    showToast('식단표 분석 중 오류가 발생했습니다. API 키를 확인해 주세요.', 'warning');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>🤖</span> AI 식단표 파싱 실행';
+                }
+            };
+
+            if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+                reader.readAsDataURL(file);
+            } else {
+                reader.readAsText(file);
+            }
+        }
+
+        function init() {
+            const selector = document.getElementById('studentSelector');
+            if (selector && window.studentsData) {
+                selector.innerHTML = '';
+                window.studentsData.forEach((st, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `${idx + 1}번 ${st.name} (${st.gender})`;
+                    selector.appendChild(opt);
+                });
+
+                selector.addEventListener('change', (e) => {
+                    if (window.state) {
+                        window.state.currentStudentIdx = parseInt(e.target.value);
+                        updateUI();
+                        updateChart();
+                    }
+                });
+            }
+
+            const now = new Date();
+            const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+            const fullDateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${weekDays[now.getDay()]})`;
+
+            const dateBadge = document.getElementById('todayDateBadge');
+            if (dateBadge) dateBadge.textContent = `📅 ${fullDateStr}`;
+
+            resolveTodayMenu();
+            renderRewards();
+            updateTrayUI();
+            updateUI();
+            initChart();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
